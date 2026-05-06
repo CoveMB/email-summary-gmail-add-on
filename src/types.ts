@@ -16,7 +16,7 @@ export type GmailEventPayload = Readonly<{
 export type AddonEvent = Readonly<{
   commonEventObject?: unknown;
   formInput?: Readonly<Record<string, unknown>>;
-  gmail?: GmailEventPayload;
+  gmail?: GmailEventPayload | undefined;
   parameters?: Readonly<Record<string, string>>;
   [fieldName: string]: unknown;
 }>;

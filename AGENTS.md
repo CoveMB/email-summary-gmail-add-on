@@ -1,8 +1,3 @@
-Yes — I would name it **`AGENTS.md`** rather than `AGENT.md` if you are targeting Codex-style agents, because many coding agents look for `AGENTS.md`. You can still keep a duplicate `AGENT.md` if your tool expects that exact name.
-
-Here is a strong version tailored to **EmailSummary**.
-
-````md
 # AGENTS.md
 
 ## Project: EmailSummary
@@ -48,7 +43,6 @@ https://www.googleapis.com/auth/calendar
 https://www.googleapis.com/auth/calendar.events
 https://www.googleapis.com/auth/gmail.labels
 ```
-````
 
 The MVP should prefer:
 
@@ -68,11 +62,32 @@ Before creating any new function, file, type, helper, or abstraction:
 1. Search the existing codebase.
 2. Check whether similar logic already exists.
 3. Reuse or extend existing code when appropriate.
-4. Avoid duplicate helpers with slightly different names.
-5. If a new function is needed, place it in the most appropriate existing module.
-6. If no good module exists, create a new one only if the new responsibility is clearly distinct.
+4. Move reusable helpers into a shared utility module or folder instead of keeping them inside feature modules.
+5. Avoid duplicate helpers with slightly different names.
+6. If a new function is needed, place it in the most appropriate existing module.
+7. If no good module exists, create a new one only if the new responsibility is clearly distinct.
 
 Prefer improving existing code over adding parallel implementations.
+
+---
+
+## Shared utility placement
+
+Feature modules should contain feature-specific orchestration and domain logic.
+
+Reusable pure helpers should live in a shared utility module or folder, with names that describe the value being validated, normalized, or transformed.
+
+Examples:
+
+```txt
+src/utils/StringUtils.ts
+src/utils/DateUtils.ts
+src/utils/ObjectUtils.ts
+```
+
+Do not leave reusable helpers buried inside modules.
+
+Before adding a utility, search existing utility files and reuse or extend them when appropriate.
 
 ---
 
@@ -291,6 +306,9 @@ Actions.ts
 
 Config.ts
   Typed configuration constants.
+
+utils/
+  Shared reusable pure helpers.
 
 types.ts
   Shared domain types.
