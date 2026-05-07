@@ -26,7 +26,7 @@
 - Verify Gemini failures show a safe user-facing error.
 - Verify AI output is clearly reviewable before user action.
 
-## Current Gmail Metadata Test
+## Current Mock Summary Test
 
 1. Run `npm run check`.
 2. Run `npm run build`.
@@ -34,9 +34,10 @@
 4. Push with `npm run clasp:push`.
 5. Open Gmail and select a thread.
 6. Open the EmailSummary add-on.
-7. Click `Read thread metadata`.
-8. Confirm the card displays subject, message count, latest sender, and latest date.
-9. Confirm the card displays `Debug body preview`.
-10. Confirm the preview is at most 300 characters.
-11. Confirm no full email body is displayed.
-12. Confirm OAuth scopes include only current-message readonly Gmail access plus add-on execution.
+7. Click `Summarize thread`.
+8. Confirm the card displays `Mock thread summary`.
+9. Confirm the card includes summary, explicit action items, things to consider, reply points, calendar suggestion, label suggestion, follow-up recommendation, and risks / ambiguities.
+10. Confirm no prompt, raw response, or full email body is displayed.
+11. Confirm the output states mock mode did not call Gemini.
+12. Confirm a truncation notice appears when the cleaned thread is truncated.
+13. Confirm OAuth scopes include only current-message readonly Gmail access plus add-on execution.

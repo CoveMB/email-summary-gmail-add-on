@@ -1,16 +1,20 @@
 import {
   buildHomeCard,
   buildPlaceholderGmailCard,
-  buildThreadMetadataDisplayCard,
-  buildThreadMetadataErrorCard,
+  buildThreadAnalysisDisplayCard,
+  buildThreadSummaryErrorCard,
 } from './domain/Cards';
+import { buildCleanThreadText } from './domain/ThreadCleaner';
 import { getCurrentThreadData } from './domain/GmailReader';
+import { buildEmailAnalysisPrompt } from './domain/PromptBuilder';
+import { parseGeminiAnalysis } from './domain/ResponseParser';
+import { analyzeThreadWithGemini } from './config/GeminiClient';
 import type { AddonEvent } from './types/types';
 
-const fallbackThreadMetadataErrorMessage = 'Thread metadata could not be read.';
+const fallbackThreadSummaryErrorMessage = 'Thread summary could not be generated.';
 
 const getSafeErrorMessage = (error: unknown): string =>
-  error instanceof Error ? error.message : fallbackThreadMetadataErrorMessage;
+  error instanceof Error ? error.message : fallbackThreadSummaryErrorMessage;
 
 export const buildHomePage = (_event: AddonEvent): GoogleAppsScript.Card_Service.Card =>
   buildHomeCard();
@@ -20,9 +24,15 @@ export const buildGmailContextualCard = (_event: AddonEvent): GoogleAppsScript.C
 
 export const buildThreadMetadataCard = (event: AddonEvent): GoogleAppsScript.Card_Service.Card => {
   try {
-    return buildThreadMetadataDisplayCard(getCurrentThreadData(event));
+    const threadData = getCurrentThreadData(event);
+    const cleanThread = buildCleanThreadText(threadData);
+    const prompt = buildEmailAnalysisPrompt(cleanThread);
+    const rawAnalysis = analyzeThreadWithGemini(prompt);
+    const emailAnalysis = parseGeminiAnalysis(rawAnalysis);
+
+    return buildThreadAnalysisDisplayCard(emailAnalysis, cleanThread);
   } catch (error: unknown) {
-    return buildThreadMetadataErrorCard(getSafeErrorMessage(error));
+    return buildThreadSummaryErrorCard(getSafeErrorMessage(error));
   }
 };
 
