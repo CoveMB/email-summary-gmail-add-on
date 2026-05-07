@@ -8,6 +8,7 @@ import type {
   SuggestedLabel,
   ThingToConsider,
 } from '../types/types';
+import { readAnalysisField } from './AnalysisSchema';
 
 const parseFailureSummary = 'Analysis could not be parsed.';
 const parseFailureFallbackReason = 'Parser returned fallback analysis.';
@@ -17,15 +18,14 @@ const labelNameMaximumLength = 80;
 const sourceMessageIdMaximumLength = 200;
 
 type UnknownRecord = Readonly<Record<string, unknown>>;
+type NormalizedDescribedItemBase = Readonly<{
+  confidence: Confidence;
+  description: string;
+  sourceMessageIds?: readonly string[];
+}>;
 
 const isRecord = (value: unknown): value is UnknownRecord =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
-
-const readField = (
-  record: UnknownRecord,
-  camelCaseFieldName: string,
-  snakeCaseFieldName: string
-): unknown => record[camelCaseFieldName] ?? record[snakeCaseFieldName];
 
 const createEmptyFollowUpRecommendation = (): FollowUpRecommendation => ({
   confidence: 'low',
@@ -54,45 +54,46 @@ const normalizeStringArray = (value: unknown, maxLength: number): readonly strin
   return value.map((item) => safeText(item, maxLength)).filter((item) => item.length > 0);
 };
 
+const normalizeDescribedItemBase = (value: UnknownRecord): NormalizedDescribedItemBase | null => {
+  const sourceMessageIds = normalizeStringArray(
+    readAnalysisField(value, 'sourceMessageIds'),
+    sourceMessageIdMaximumLength
+  );
+  const description = safeText(value.description, analysisTextMaximumLength);
+
+  if (description.length === 0) {
+    return null;
+  }
+
+  return {
+    confidence: normalizeConfidence(value.confidence),
+    description,
+    ...(sourceMessageIds.length > 0 ? { sourceMessageIds } : {}),
+  };
+};
+
 const normalizeExplicitActionItem = (value: unknown): ExplicitActionItem | null => {
   if (!isRecord(value)) {
     return null;
   }
 
-  const dueDateIso = safeText(
-    readField(value, 'dueDateIso', 'due_date_iso'),
-    analysisTextMaximumLength
-  );
-  const sourceMessageIds = normalizeStringArray(
-    readField(value, 'sourceMessageIds', 'source_message_ids'),
-    sourceMessageIdMaximumLength
-  );
+  const baseItem = normalizeDescribedItemBase(value);
 
-  return {
-    confidence: normalizeConfidence(value.confidence),
-    description: safeText(value.description, analysisTextMaximumLength),
-    owner: normalizeActionOwner(value.owner),
-    ...(dueDateIso.length > 0 ? { dueDateIso } : {}),
-    ...(sourceMessageIds.length > 0 ? { sourceMessageIds } : {}),
-  };
-};
-
-const normalizeThingToConsider = (value: unknown): ThingToConsider | null => {
-  if (!isRecord(value)) {
+  if (baseItem === null) {
     return null;
   }
 
-  const sourceMessageIds = normalizeStringArray(
-    readField(value, 'sourceMessageIds', 'source_message_ids'),
-    sourceMessageIdMaximumLength
-  );
+  const dueDateIso = safeText(readAnalysisField(value, 'dueDateIso'), analysisTextMaximumLength);
 
   return {
-    confidence: normalizeConfidence(value.confidence),
-    description: safeText(value.description, analysisTextMaximumLength),
-    ...(sourceMessageIds.length > 0 ? { sourceMessageIds } : {}),
+    ...baseItem,
+    owner: normalizeActionOwner(value.owner),
+    ...(dueDateIso.length > 0 ? { dueDateIso } : {}),
   };
 };
+
+const normalizeThingToConsider = (value: unknown): ThingToConsider | null =>
+  isRecord(value) ? normalizeDescribedItemBase(value) : null;
 
 const normalizeSuggestedCalendarEvent = (value: unknown): SuggestedCalendarEvent | undefined => {
   if (!isRecord(value)) {
@@ -101,18 +102,23 @@ const normalizeSuggestedCalendarEvent = (value: unknown): SuggestedCalendarEvent
 
   const description = safeText(value.description, analysisTextMaximumLength);
   const endDateTimeIso = safeText(
-    readField(value, 'endDateTimeIso', 'end_date_time_iso'),
+    readAnalysisField(value, 'endDateTimeIso'),
     analysisTextMaximumLength
   );
   const location = safeText(value.location, analysisTextMaximumLength);
   const startDateTimeIso = safeText(
-    readField(value, 'startDateTimeIso', 'start_date_time_iso'),
+    readAnalysisField(value, 'startDateTimeIso'),
     analysisTextMaximumLength
   );
+  const title = safeText(value.title, analysisTextMaximumLength);
+
+  if (title.length === 0) {
+    return undefined;
+  }
 
   return {
     confidence: normalizeConfidence(value.confidence),
-    title: safeText(value.title, analysisTextMaximumLength),
+    title,
     ...(description.length > 0 ? { description } : {}),
     ...(endDateTimeIso.length > 0 ? { endDateTimeIso } : {}),
     ...(location.length > 0 ? { location } : {}),
@@ -125,9 +131,15 @@ const normalizeSuggestedLabel = (value: unknown): SuggestedLabel | undefined => 
     return undefined;
   }
 
+  const name = safeText(value.name, labelNameMaximumLength);
+
+  if (name.length === 0) {
+    return undefined;
+  }
+
   return {
     confidence: normalizeConfidence(value.confidence),
-    name: safeText(value.name, labelNameMaximumLength),
+    name,
     reason: safeText(value.reason, analysisTextMaximumLength),
   };
 };
@@ -138,14 +150,14 @@ const normalizeFollowUpRecommendation = (value: unknown): FollowUpRecommendation
   }
 
   const followUpDateIso = safeText(
-    readField(value, 'followUpDateIso', 'follow_up_date_iso'),
+    readAnalysisField(value, 'followUpDateIso'),
     analysisTextMaximumLength
   );
 
   return {
     confidence: normalizeConfidence(value.confidence),
     reason: safeText(value.reason, analysisTextMaximumLength),
-    shouldFollowUp: readField(value, 'shouldFollowUp', 'should_follow_up') === true,
+    shouldFollowUp: readAnalysisField(value, 'shouldFollowUp') === true,
     ...(followUpDateIso.length > 0 ? { followUpDateIso } : {}),
   };
 };
@@ -171,34 +183,30 @@ const normalizeEmailAnalysis = (value: unknown): EmailAnalysis => {
   }
 
   const suggestedCalendarEvent = normalizeSuggestedCalendarEvent(
-    readField(value, 'suggestedCalendarEvent', 'suggested_calendar_event')
+    readAnalysisField(value, 'suggestedCalendarEvent')
   );
-  const suggestedLabel = normalizeSuggestedLabel(
-    readField(value, 'suggestedLabel', 'suggested_label')
-  );
+  const suggestedLabel = normalizeSuggestedLabel(readAnalysisField(value, 'suggestedLabel'));
 
   return {
     explicitActionItems: normalizeObjectArray(
-      readField(value, 'explicitActionItems', 'explicit_action_items'),
+      readAnalysisField(value, 'explicitActionItems'),
       normalizeExplicitActionItem
     ),
     followUpRecommendation: normalizeFollowUpRecommendation(
-      readField(value, 'followUpRecommendation', 'follow_up_recommendation')
+      readAnalysisField(value, 'followUpRecommendation')
     ),
-    overallConfidence: normalizeConfidence(
-      readField(value, 'overallConfidence', 'overall_confidence')
-    ),
+    overallConfidence: normalizeConfidence(readAnalysisField(value, 'overallConfidence')),
     risksAndAmbiguities: normalizeStringArray(
-      readField(value, 'risksAndAmbiguities', 'risks_and_ambiguities'),
+      readAnalysisField(value, 'risksAndAmbiguities'),
       analysisTextMaximumLength
     ),
     suggestedReplyPoints: normalizeStringArray(
-      readField(value, 'suggestedReplyPoints', 'suggested_reply_points'),
+      readAnalysisField(value, 'suggestedReplyPoints'),
       analysisTextMaximumLength
     ),
     summary: safeText(value.summary, analysisTextMaximumLength),
     thingsToConsider: normalizeObjectArray(
-      readField(value, 'thingsToConsider', 'things_to_consider'),
+      readAnalysisField(value, 'thingsToConsider'),
       normalizeThingToConsider
     ),
     ...(suggestedCalendarEvent ? { suggestedCalendarEvent } : {}),

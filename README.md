@@ -1,6 +1,6 @@
-# EmailSummary
+# ThreadBrief
 
-EmailSummary is a personal Google Workspace Gmail Add-on scaffold for summarizing the currently opened Gmail thread.
+ThreadBrief is a personal Google Workspace Gmail Add-on scaffold for summarizing the currently opened Gmail thread.
 
 The MVP goal is a private add-on that can later let a user click "Summarize thread" and review structured output such as a summary, action items, reply points, follow-up recommendations, and risks. Product logic is intentionally not implemented in this initialization step.
 

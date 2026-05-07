@@ -241,6 +241,40 @@ describe('parseGeminiAnalysis', () => {
     expect(analysis.overallConfidence).toBe('low');
   });
 
+  it('drops parsed objects that lack required display text', () => {
+    const analysis = parseGeminiAnalysis(
+      JSON.stringify({
+        explicit_action_items: [
+          {
+            confidence: 'high',
+            description: '  ',
+            owner: 'recipient',
+          },
+        ],
+        suggested_calendar_event: {
+          confidence: 'medium',
+          description: 'Calendar details without title.',
+        },
+        suggested_label: {
+          confidence: 'medium',
+          name: '',
+          reason: 'Missing label name.',
+        },
+        things_to_consider: [
+          {
+            confidence: 'low',
+            description: '',
+          },
+        ],
+      })
+    );
+
+    expect(analysis.explicitActionItems).toEqual([]);
+    expect(analysis.thingsToConsider).toEqual([]);
+    expect(analysis.suggestedCalendarEvent).toBeUndefined();
+    expect(analysis.suggestedLabel).toBeUndefined();
+  });
+
   it('normalizes invalid confidence values to low', () => {
     const analysis = parseGeminiAnalysis(
       JSON.stringify({

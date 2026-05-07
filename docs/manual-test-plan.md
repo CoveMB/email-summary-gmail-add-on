@@ -33,7 +33,7 @@
 3. Configure clasp with `rootDir` set to `dist`.
 4. Push with `npm run clasp:push`.
 5. Open Gmail and select a thread.
-6. Open the EmailSummary add-on.
+6. Open the ThreadBrief add-on.
 7. Click `Summarize thread`.
 8. Confirm the card displays `Mock thread summary`.
 9. Confirm the card includes summary, explicit action items, things to consider, reply points, calendar suggestion, label suggestion, follow-up recommendation, and risks / ambiguities.

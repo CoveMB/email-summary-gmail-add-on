@@ -1,7 +1,7 @@
 {
-  "name": "email-summary-gmail-addon",
+  "name": "threadbrief-gmail-addon",
   "version": "0.1.0",
-  "description": "Personal Google Workspace Gmail Add-on scaffold for EmailSummary.",
+  "description": "Personal Google Workspace Gmail Add-on scaffold for ThreadBrief.",
   "private": true,
   "type": "module",
   "scripts": {
@@ -15,7 +15,8 @@
     "check": "npm run format:check && npm run lint && npm run test && npm run build",
     "clasp:push": "npm run build && clasp push",
     "clasp:pull": "clasp pull",
-    "clasp:open": "clasp open-script"
+    "clasp:open": "clasp open-script",
+    "prepare": "husky"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
@@ -24,6 +25,7 @@
     "@types/google-apps-script": "2.0.8",
     "eslint": "10.3.0",
     "eslint-config-prettier": "^10.1.5",
+    "husky": "^9.1.7",
     "prettier": "^3.5.3",
     "rimraf": "^6.0.1",
     "rollup": "^4.60.3",

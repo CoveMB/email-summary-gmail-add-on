@@ -45,14 +45,15 @@ describe('buildEmailAnalysisPrompt', () => {
     const prompt = buildEmailAnalysisPrompt(buildCleanThreadText());
 
     expect(prompt).toContain('"summary"');
-    expect(prompt).toContain('"explicitActionItems"');
-    expect(prompt).toContain('"thingsToConsider"');
-    expect(prompt).toContain('"suggestedReplyPoints"');
-    expect(prompt).toContain('"suggestedCalendarEvent"');
-    expect(prompt).toContain('"suggestedLabel"');
-    expect(prompt).toContain('"followUpRecommendation"');
-    expect(prompt).toContain('"risksAndAmbiguities"');
-    expect(prompt).toContain('"overallConfidence"');
+    expect(prompt).toContain('"explicit_action_items"');
+    expect(prompt).toContain('"things_to_consider"');
+    expect(prompt).toContain('"suggested_reply_points"');
+    expect(prompt).toContain('"suggested_calendar_event"');
+    expect(prompt).toContain('"suggested_label"');
+    expect(prompt).toContain('"follow_up_recommendation"');
+    expect(prompt).toContain('"risks_and_ambiguities"');
+    expect(prompt).toContain('"overall_confidence"');
+    expect(prompt).not.toContain('"explicitActionItems"');
   });
 
   it('includes message counts and non-truncated status', () => {

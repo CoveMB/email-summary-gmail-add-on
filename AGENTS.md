@@ -224,6 +224,7 @@ Prefer consistency over personal preference.
 Write code so another AI agent or human developer can quickly understand it, safely modify it, and build on it.
 
 Do:
+
 - use fully spelled, descriptive names
 - keep functions small and focused
 - use explicit inputs and outputs
@@ -234,6 +235,7 @@ Do:
 - use simple abstractions that match real project concepts
 
 Do not:
+
 - use vague or abbreviated names unless they are standard and unmistakable
 - use generic names like `data`, `value`, `item`, `result`, `handle`, `process`, `manager`, `helper`, or `util` when a more specific name is possible
 - use vague names in exported functions, domain logic, and non-trivial scopes. Short generic names are acceptable in tiny local transformations when the meaning is obvious.
@@ -485,9 +487,7 @@ Use concise JSDoc for non-trivial functions:
  * Builds a normalized, bounded representation of an external provider response.
  * The returned object is safe for internal rendering and should not contain raw provider payloads.
  */
-function buildNormalizedProviderResponse(
-  rawProviderResponse: unknown,
-): NormalizedProviderResponse {
+function buildNormalizedProviderResponse(rawProviderResponse: unknown): NormalizedProviderResponse {
   // ...
 }
 ```
@@ -810,23 +810,23 @@ For these changes, the handoff must mention any effect on:
 
 ## EmailSummary action policy
 
-| Capability | MVP policy |
-| --- | --- |
-| Display Gmail contextual card | Allowed when a user opens a Gmail thread |
-| Summarize opened thread | Allowed only after explicit user click |
-| Read current thread | Allowed only for the opened Gmail context and only as needed |
-| Send opened-thread content to AI | Allowed only after explicit user click |
-| Send email | Forbidden |
-| Create Gmail draft | Allowed only when explicitly requested by the current task, and only as a user-reviewed draft |
-| Create Calendar event | Forbidden by default; suggest event details or Calendar URL instead |
-| Apply Gmail label | Forbidden by default; suggest label instead |
-| Archive, delete, or modify Gmail messages | Forbidden by default |
-| Persist email body | Forbidden unless explicitly requested and documented |
-| Cache prompts or AI responses | Forbidden unless explicitly requested and documented |
-| Add OAuth scope | Forbidden unless explicitly requested |
-| Add AI provider | Forbidden unless explicitly requested |
-| Add new network destination | Forbidden unless explicitly requested |
-| Log prompt, AI response, or Gmail content | Forbidden |
+| Capability                                | MVP policy                                                                                    |
+| ----------------------------------------- | --------------------------------------------------------------------------------------------- |
+| Display Gmail contextual card             | Allowed when a user opens a Gmail thread                                                      |
+| Summarize opened thread                   | Allowed only after explicit user click                                                        |
+| Read current thread                       | Allowed only for the opened Gmail context and only as needed                                  |
+| Send opened-thread content to AI          | Allowed only after explicit user click                                                        |
+| Send email                                | Forbidden                                                                                     |
+| Create Gmail draft                        | Allowed only when explicitly requested by the current task, and only as a user-reviewed draft |
+| Create Calendar event                     | Forbidden by default; suggest event details or Calendar URL instead                           |
+| Apply Gmail label                         | Forbidden by default; suggest label instead                                                   |
+| Archive, delete, or modify Gmail messages | Forbidden by default                                                                          |
+| Persist email body                        | Forbidden unless explicitly requested and documented                                          |
+| Cache prompts or AI responses             | Forbidden unless explicitly requested and documented                                          |
+| Add OAuth scope                           | Forbidden unless explicitly requested                                                         |
+| Add AI provider                           | Forbidden unless explicitly requested                                                         |
+| Add new network destination               | Forbidden unless explicitly requested                                                         |
+| Log prompt, AI response, or Gmail content | Forbidden                                                                                     |
 
 Draft creation is permitted only when the current task explicitly asks for it. It must create a user-reviewed Gmail draft only. The add-on must never send email directly.
 
@@ -1277,18 +1277,23 @@ After completing a non-trivial task, provide a concise handoff summary:
 ### Handoff summary
 
 Changed:
+
 - <what changed>
 
 Files touched:
+
 - `path/to/file.ts`
 
 Validation:
+
 - <commands run and results>
 
 Important decisions:
+
 - <decision and reason>
 
 Follow-up:
+
 - <remaining work, risks, or `None`>
 ```
 

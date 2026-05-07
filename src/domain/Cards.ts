@@ -11,8 +11,14 @@ import type {
 import { escapeCardText } from '../utils/CardUtils';
 import { getPrivacyNoticeText } from './PrivacyNotice';
 
-const summarizeThreadFunctionName = 'buildThreadMetadataCard';
+const summarizeThreadFunctionName = 'buildThreadSummaryCard';
 const emptySectionText = 'None found.';
+
+type MetadataLineInput = Readonly<{
+  fallbackValue?: string | undefined;
+  label: string;
+  value?: string | undefined;
+}>;
 
 const buildHeader = (subtitle: string): GoogleAppsScript.Card_Service.CardHeader =>
   CardService.newCardHeader().setTitle(CONFIG.APP_NAME).setSubtitle(subtitle);
@@ -29,6 +35,18 @@ const buildSummarizeThreadButtonSet = (): GoogleAppsScript.Card_Service.ButtonSe
 
 const buildMetadataLine = (label: string, value: string): string =>
   `<b>${escapeCardText(label)}:</b> ${escapeCardText(value)}`;
+
+const buildOptionalMetadataLines = (
+  metadataLines: readonly MetadataLineInput[]
+): readonly string[] =>
+  metadataLines.flatMap((metadataLine) => {
+    const value =
+      metadataLine.value && metadataLine.value.length > 0
+        ? metadataLine.value
+        : metadataLine.fallbackValue;
+
+    return value ? [buildMetadataLine(metadataLine.label, value)] : [];
+  });
 
 const buildSection = (title: string, bodyLines: readonly string[]): string =>
   [`<b>${escapeCardText(title)}</b>`, ...bodyLines].join('<br>');
@@ -58,22 +76,14 @@ const formatCalendarSuggestion = (
     return [emptySectionText];
   }
 
-  return [
-    buildMetadataLine('Title', suggestedCalendarEvent.title || '(untitled)'),
-    buildMetadataLine('Confidence', suggestedCalendarEvent.confidence),
-    ...(suggestedCalendarEvent.description
-      ? [buildMetadataLine('Description', suggestedCalendarEvent.description)]
-      : []),
-    ...(suggestedCalendarEvent.startDateTimeIso
-      ? [buildMetadataLine('Start', suggestedCalendarEvent.startDateTimeIso)]
-      : []),
-    ...(suggestedCalendarEvent.endDateTimeIso
-      ? [buildMetadataLine('End', suggestedCalendarEvent.endDateTimeIso)]
-      : []),
-    ...(suggestedCalendarEvent.location
-      ? [buildMetadataLine('Location', suggestedCalendarEvent.location)]
-      : []),
-  ];
+  return buildOptionalMetadataLines([
+    { fallbackValue: '(untitled)', label: 'Title', value: suggestedCalendarEvent.title },
+    { label: 'Confidence', value: suggestedCalendarEvent.confidence },
+    { label: 'Description', value: suggestedCalendarEvent.description },
+    { label: 'Start', value: suggestedCalendarEvent.startDateTimeIso },
+    { label: 'End', value: suggestedCalendarEvent.endDateTimeIso },
+    { label: 'Location', value: suggestedCalendarEvent.location },
+  ]);
 };
 
 const formatLabelSuggestion = (suggestedLabel: SuggestedLabel | undefined): readonly string[] => {
@@ -81,23 +91,29 @@ const formatLabelSuggestion = (suggestedLabel: SuggestedLabel | undefined): read
     return [emptySectionText];
   }
 
-  return [
-    buildMetadataLine('Label', suggestedLabel.name || '(unnamed)'),
-    buildMetadataLine('Confidence', suggestedLabel.confidence),
-    buildMetadataLine('Reason', suggestedLabel.reason || '(no reason provided)'),
-  ];
+  return buildOptionalMetadataLines([
+    { fallbackValue: '(unnamed)', label: 'Label', value: suggestedLabel.name },
+    { label: 'Confidence', value: suggestedLabel.confidence },
+    { fallbackValue: '(no reason provided)', label: 'Reason', value: suggestedLabel.reason },
+  ]);
 };
 
 const formatFollowUpRecommendation = (
   followUpRecommendation: FollowUpRecommendation
-): readonly string[] => [
-  buildMetadataLine('Recommended', followUpRecommendation.shouldFollowUp ? 'Yes' : 'No'),
-  buildMetadataLine('Confidence', followUpRecommendation.confidence),
-  buildMetadataLine('Reason', followUpRecommendation.reason || '(no reason provided)'),
-  ...(followUpRecommendation.followUpDateIso
-    ? [buildMetadataLine('Follow-up date', followUpRecommendation.followUpDateIso)]
-    : []),
-];
+): readonly string[] =>
+  buildOptionalMetadataLines([
+    {
+      label: 'Recommended',
+      value: followUpRecommendation.shouldFollowUp ? 'Yes' : 'No',
+    },
+    { label: 'Confidence', value: followUpRecommendation.confidence },
+    {
+      fallbackValue: '(no reason provided)',
+      label: 'Reason',
+      value: followUpRecommendation.reason,
+    },
+    { label: 'Follow-up date', value: followUpRecommendation.followUpDateIso },
+  ]);
 
 const buildTruncationSection = (cleanThread: CleanThreadText): string =>
   cleanThread.wasTruncated
@@ -115,12 +131,9 @@ const buildBaseCard = (subtitle: string, bodyText: string): GoogleAppsScript.Car
 };
 
 export const buildHomeCard = (): GoogleAppsScript.Card_Service.Card =>
-  buildBaseCard(
-    'Personal Gmail thread brief assistant',
-    'Open a Gmail thread to use EmailSummary.'
-  );
+  buildBaseCard('Personal Gmail thread brief assistant', 'Open a Gmail thread to use ThreadBrief.');
 
-export const buildPlaceholderGmailCard = (): GoogleAppsScript.Card_Service.Card =>
+export const buildGmailSummaryEntryCard = (): GoogleAppsScript.Card_Service.Card =>
   CardService.newCardBuilder()
     .setHeader(buildHeader('Gmail thread context'))
     .addSection(
@@ -136,32 +149,35 @@ export const buildPlaceholderGmailCard = (): GoogleAppsScript.Card_Service.Card 
     )
     .build();
 
+const buildThreadAnalysisBodyText = (
+  analysis: EmailAnalysis,
+  cleanThread: CleanThreadText
+): string =>
+  [
+    buildSection('Summary', [escapeCardText(analysis.summary || '(No summary returned.)')]),
+    buildListSection('Explicit action items', analysis.explicitActionItems.map(formatActionItem)),
+    buildListSection('Things to consider', analysis.thingsToConsider.map(formatThingToConsider)),
+    buildListSection('Suggested reply points', analysis.suggestedReplyPoints),
+    buildSection(
+      'Suggested calendar event',
+      formatCalendarSuggestion(analysis.suggestedCalendarEvent)
+    ),
+    buildSection('Suggested label', formatLabelSuggestion(analysis.suggestedLabel)),
+    buildSection(
+      'Follow-up recommendation',
+      formatFollowUpRecommendation(analysis.followUpRecommendation)
+    ),
+    buildListSection('Risks / ambiguities', analysis.risksAndAmbiguities),
+    buildTruncationSection(cleanThread),
+  ]
+    .filter((section) => section.length > 0)
+    .join('<br><br>');
+
 export const buildThreadAnalysisDisplayCard = (
   analysis: EmailAnalysis,
   cleanThread: CleanThreadText
 ): GoogleAppsScript.Card_Service.Card =>
-  buildBaseCard(
-    'Mock thread summary',
-    [
-      buildSection('Summary', [escapeCardText(analysis.summary || '(No summary returned.)')]),
-      buildListSection('Explicit action items', analysis.explicitActionItems.map(formatActionItem)),
-      buildListSection('Things to consider', analysis.thingsToConsider.map(formatThingToConsider)),
-      buildListSection('Suggested reply points', analysis.suggestedReplyPoints),
-      buildSection(
-        'Suggested calendar event',
-        formatCalendarSuggestion(analysis.suggestedCalendarEvent)
-      ),
-      buildSection('Suggested label', formatLabelSuggestion(analysis.suggestedLabel)),
-      buildSection(
-        'Follow-up recommendation',
-        formatFollowUpRecommendation(analysis.followUpRecommendation)
-      ),
-      buildListSection('Risks / ambiguities', analysis.risksAndAmbiguities),
-      buildTruncationSection(cleanThread),
-    ]
-      .filter((section) => section.length > 0)
-      .join('<br><br>')
-  );
+  buildBaseCard('Mock thread summary', buildThreadAnalysisBodyText(analysis, cleanThread));
 
 export const buildThreadSummaryErrorCard = (
   errorMessage: string

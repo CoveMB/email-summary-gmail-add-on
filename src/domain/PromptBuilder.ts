@@ -1,43 +1,44 @@
 import type { CleanThreadText } from '../types/types';
+import { analysisFieldNames } from './AnalysisSchema';
 
 const schemaExample = {
-  explicitActionItems: [
+  [analysisFieldNames.explicitActionItems.external]: [
     {
       confidence: 'high | medium | low',
       description: 'direct ask or obligation only',
-      dueDateIso: 'optional ISO date or datetime when explicit',
+      [analysisFieldNames.dueDateIso.external]: 'optional ISO date or datetime when explicit',
       owner: 'recipient | sender | third_party | unclear',
-      sourceMessageIds: ['optional source message ids'],
+      [analysisFieldNames.sourceMessageIds.external]: ['optional source message ids'],
     },
   ],
-  followUpRecommendation: {
+  [analysisFieldNames.followUpRecommendation.external]: {
     confidence: 'high | medium | low',
-    followUpDateIso: 'optional ISO date or datetime',
+    [analysisFieldNames.followUpDateIso.external]: 'optional ISO date or datetime',
     reason: 'why follow-up is or is not recommended',
-    shouldFollowUp: false,
+    [analysisFieldNames.shouldFollowUp.external]: false,
   },
-  overallConfidence: 'high | medium | low',
-  risksAndAmbiguities: ['risk, missing context, or ambiguity'],
-  suggestedCalendarEvent: {
+  [analysisFieldNames.overallConfidence.external]: 'high | medium | low',
+  [analysisFieldNames.risksAndAmbiguities.external]: ['risk, missing context, or ambiguity'],
+  [analysisFieldNames.suggestedCalendarEvent.external]: {
     confidence: 'high | medium | low',
     description: 'optional event details',
-    endDateTimeIso: 'optional ISO datetime',
+    [analysisFieldNames.endDateTimeIso.external]: 'optional ISO datetime',
     location: 'optional location',
-    startDateTimeIso: 'optional ISO datetime',
+    [analysisFieldNames.startDateTimeIso.external]: 'optional ISO datetime',
     title: 'event title',
   },
-  suggestedLabel: {
+  [analysisFieldNames.suggestedLabel.external]: {
     confidence: 'high | medium | low',
     name: 'short label name',
     reason: 'why this label fits',
   },
-  suggestedReplyPoints: ['point to include in reply'],
+  [analysisFieldNames.suggestedReplyPoints.external]: ['point to include in reply'],
   summary: 'brief thread summary',
-  thingsToConsider: [
+  [analysisFieldNames.thingsToConsider.external]: [
     {
       confidence: 'high | medium | low',
       description: 'context, caveat, or interpretation; not an obligation',
-      sourceMessageIds: ['optional source message ids'],
+      [analysisFieldNames.sourceMessageIds.external]: ['optional source message ids'],
     },
   ],
 };

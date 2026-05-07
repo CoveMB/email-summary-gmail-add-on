@@ -8,7 +8,7 @@
   ],
   "addOns": {
     "common": {
-      "name": "EmailSummary",
+      "name": "ThreadBrief",
       "homepageTrigger": {
         "runFunction": "buildHomePage"
       },

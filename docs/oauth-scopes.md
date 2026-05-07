@@ -23,7 +23,7 @@ Scope:
 https://www.googleapis.com/auth/gmail.addons.current.message.readonly
 
 Reason:
-Allows EmailSummary to read metadata for only the currently opened Gmail message/thread after user action in the add-on.
+Allows ThreadBrief to read metadata for only the currently opened Gmail message/thread after user action in the add-on.
 
 Scope:
 https://www.googleapis.com/auth/gmail.addons.execute

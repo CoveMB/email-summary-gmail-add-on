@@ -1,43 +1,44 @@
 import { CONFIG } from './Config';
+import { analysisFieldNames } from '../domain/AnalysisSchema';
 
 const mockGeminiAnalysisResponse = {
-  explicit_action_items: [
+  [analysisFieldNames.explicitActionItems.external]: [
     {
       confidence: 'high',
       description: 'Review the thread and decide whether a real Gemini call should be enabled.',
       owner: 'sender',
-      source_message_ids: ['mock-message-1'],
+      [analysisFieldNames.sourceMessageIds.external]: ['mock-message-1'],
     },
   ],
-  follow_up_recommendation: {
+  [analysisFieldNames.followUpRecommendation.external]: {
     confidence: 'medium',
     reason: 'Mock mode keeps development safe until API access and data handling are reviewed.',
-    should_follow_up: false,
+    [analysisFieldNames.shouldFollowUp.external]: false,
   },
-  overall_confidence: 'medium',
-  risks_and_ambiguities: [
+  [analysisFieldNames.overallConfidence.external]: 'medium',
+  [analysisFieldNames.risksAndAmbiguities.external]: [
     'This is a deterministic mock response and not an interpretation of real email content.',
   ],
-  suggested_calendar_event: {
+  [analysisFieldNames.suggestedCalendarEvent.external]: {
     confidence: 'low',
     description: 'No real calendar event inferred in mock mode.',
     title: 'Review ThreadBrief Gemini setup',
   },
-  suggested_label: {
+  [analysisFieldNames.suggestedLabel.external]: {
     confidence: 'medium',
     name: 'ThreadBrief Mock',
     reason: 'Response was generated locally in mock mode.',
   },
-  suggested_reply_points: [
+  [analysisFieldNames.suggestedReplyPoints.external]: [
     'Confirm Gemini integration remains disabled until credentials and scopes are configured.',
   ],
   summary: 'ThreadBrief mock analysis response. No Gemini API call was made.',
-  things_to_consider: [
+  [analysisFieldNames.thingsToConsider.external]: [
     {
       confidence: 'medium',
       description:
         'Mock output proves the pipeline shape without reading secrets or sending network requests.',
-      source_message_ids: ['mock-message-1'],
+      [analysisFieldNames.sourceMessageIds.external]: ['mock-message-1'],
     },
   ],
 } as const;
