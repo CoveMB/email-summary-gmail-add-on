@@ -27,6 +27,336 @@ The project must prioritize:
 
 ---
 
+# Agent collaboration and maintainability rules
+
+## AI-friendly code clarity
+
+Write code so another AI agent can quickly understand it, safely modify it, and build on it.
+
+Prefer:
+
+- Fully spelled, descriptive names for variables, functions, types, constants, and files.
+- Names that reveal intent, domain meaning, and usage.
+- Small functions with one clear responsibility.
+- Clear separation of concerns.
+- Explicit types, interfaces, and schemas when they improve clarity.
+- Documentation that explains intent, assumptions, constraints, side effects, and non-obvious decisions.
+
+Avoid:
+
+- Vague or abbreviated names unless they are standard and unmistakable.
+- Generic names like `data`, `value`, `item`, `result`, `handle`, `process`, `manager`, `helper`, or `util` when a more specific name is possible.
+- Large multi-purpose functions.
+- Tiny wrapper functions that add indirection without adding meaning.
+- Comments that merely restate the code.
+
+When naming:
+
+- Prefer intention-revealing names over short names.
+- Prefer domain language over generic placeholders.
+- Make names specific enough that another agent can infer purpose without reading the whole project.
+
+When documenting:
+
+- Explain why, not just what.
+- Document inputs, outputs, constraints, side effects, and failure modes when useful.
+- Mention important design decisions and tradeoffs.
+
+## Search and reuse before creating new code
+
+Before creating a new function, utility, type, component, config object, prompt, schema, or business rule, first check whether an equivalent or related implementation already exists in the codebase.
+
+Prefer:
+
+- Reusing existing utilities when they already fit the need.
+- Extending existing abstractions when the new behavior clearly belongs there.
+- Refactoring duplicated logic into a shared helper when the same pattern appears more than once.
+- Following existing naming, file placement, and architectural conventions.
+
+Avoid:
+
+- Creating a new helper just because it is faster.
+- Duplicating logic with slightly different names.
+- Creating parallel abstractions that solve the same problem.
+- Adding a new dependency when existing code already provides the needed behavior.
+
+Before implementing new logic, search for:
+
+- Similar function names.
+- Similar business rules.
+- Similar UI components.
+- Existing constants or config values.
+- Existing types, schemas, validators, or API wrappers.
+- Existing tests that describe the intended behavior.
+
+If an existing implementation is found, decide whether to:
+
+1. Reuse it directly.
+2. Extend it safely.
+3. Refactor it into a more general shared utility.
+4. Leave it unchanged and explain why a new implementation is necessary.
+
+When creating something new, document briefly why reuse was not appropriate.
+
+Before finishing a change, verify:
+
+- No equivalent function, utility, type, component, config, or business rule already existed.
+- No duplicated business rule, prompt fragment, string value, or model setting was introduced.
+- Existing abstractions were reused where appropriate.
+- Any new abstraction has a clear reason to exist.
+- The new code is placed where future agents would naturally look for it.
+- ***
+- 
+## Clear and simple implementation
+
+Prefer clear, simple implementations that make complexity visible instead of hiding it behind clever abstractions.
+
+The goal is not to make code look short; the goal is to make behavior easy to understand, verify, modify, and debug.
+
+Prefer:
+- Straightforward control flow.
+- Explicit data transformations.
+- Small, named steps for complex logic.
+- Simple abstractions that match real project concepts.
+- Code that makes edge cases and tradeoffs visible.
+- Clear error handling instead of silent failure.
+- Readability over cleverness.
+
+Avoid:
+- Clever one-liners that compress important logic.
+- Overly generic abstractions before they are needed.
+- Hidden side effects.
+- Deeply nested logic.
+- Magic behavior that depends on implicit conventions.
+- Premature optimization.
+- Hiding complexity inside vague helpers like `processData`, `handleLogic`, or `doEverything`.
+
+When complexity is necessary:
+- Surface it with clear names, comments, types, and function boundaries.
+- Explain why the complexity exists.
+- Keep the complex part isolated from simpler surrounding code.
+- Add tests around the complex behavior when possible.
+
+Before finishing a change, ask:
+- Is this implementation easy for another agent to understand?
+- Is the complexity essential or accidental?
+- Would a simpler implementation be easier to maintain?
+- Are edge cases visible and intentionally handled?
+- Would debugging this be straightforward?
+
+## Scope control
+
+Make the smallest safe change that fully satisfies the task.
+
+Prefer:
+- Focused changes directly related to the request.
+- Preserving existing behavior unless the task explicitly requires changing it.
+- Updating nearby tests and documentation when behavior changes.
+- Separating refactors from feature changes unless the refactor is necessary.
+
+Avoid:
+- Unrelated cleanup.
+- Rewriting large areas of code without a clear reason.
+- Changing architecture casually.
+- Renaming files, functions, or types unless it improves clarity and is worth the migration cost.
+- Introducing new patterns when existing project patterns are good enough.
+
+If a broader issue is discovered, mention it as follow-up instead of fixing it inside an unrelated task.
+
+## Plan before changing code
+
+Before making non-trivial changes, first understand the relevant flow.
+
+The agent should:
+1. Identify the files likely involved.
+2. Read existing related code before editing.
+3. Check for existing utilities, types, schemas, prompts, constants, and tests.
+4. Form a brief implementation plan.
+5. Make the smallest coherent change.
+6. Validate the change.
+
+For complex tasks, write the plan in a concise checklist before editing. Update the plan if discovery shows the first approach was wrong.
+
+## Small reviewable changes
+
+Prefer changes that are easy to review, test, and revert.
+
+When possible:
+- Make one conceptual change at a time.
+- Keep diffs small and localized.
+- Avoid mixing formatting-only changes with logic changes.
+- Avoid broad file rewrites unless necessary.
+- Preserve existing public APIs unless there is a clear reason to change them.
+- Keep migration work explicit and documented.
+
+A future reviewer or AI agent should be able to understand the diff without reconstructing the whole project.
+
+## Validation and quality gates
+
+After changing code, run the most relevant validation commands available in the project.
+
+Prefer running:
+- Type checking.
+- Linting.
+- Formatting checks.
+- Unit tests.
+- Integration tests when affected behavior crosses module boundaries.
+- Build checks when configuration, imports, bundling, or deployment files change.
+
+If validation cannot be run, explain why and describe what should be checked manually.
+
+Do not claim that code works unless it was validated or the reasoned confidence is clearly stated.
+
+## Tests for behavior changes
+
+When changing behavior, add or update tests whenever practical.
+
+Prefer tests that:
+- Cover the main expected path.
+- Cover important edge cases.
+- Capture bugs before fixing them.
+- Test observable behavior instead of implementation details.
+- Use clear test names that describe the scenario and expected result.
+
+Avoid:
+- Overly brittle tests.
+- Tests that only verify mocks were called without checking meaningful behavior.
+- Large test rewrites unrelated to the change.
+
+## Error handling and edge cases
+
+Handle errors explicitly and make failure modes understandable.
+
+Prefer:
+- Clear validation near system boundaries.
+- Typed errors or structured error objects when useful.
+- User-safe error messages.
+- Developer-useful logs that do not expose secrets.
+- Explicit handling for null, undefined, empty arrays, missing config, API failures, and permission failures.
+
+Avoid:
+- Silent failures.
+- Catch blocks that ignore errors.
+- Throwing vague errors like `Something went wrong`.
+- Assuming external services always return valid data.
+
+When an edge case is intentionally not handled, document why.
+
+## Dependency discipline
+
+Do not add a new dependency unless it is clearly justified.
+
+Before adding a dependency, check:
+- Whether the project already has a dependency that solves the problem.
+- Whether the task can be solved simply without a dependency.
+- The package size, maintenance status, security posture, and API stability.
+- Whether the dependency fits the existing architecture.
+
+Prefer standard library features and existing project utilities for small tasks.
+
+If a new dependency is added, explain why it is needed.
+
+## Security and privacy
+
+Treat user data, email content, API keys, tokens, credentials, and private configuration as sensitive.
+
+Never:
+- Log secrets or private user content unnecessarily.
+- Commit API keys, tokens, credentials, or local environment files.
+- Expose private data in error messages.
+- Send sensitive data to external services unless the feature explicitly requires it and the data flow is understood.
+
+Prefer:
+- Environment variables for secrets.
+- Minimal data sent to external APIs.
+- Clear permission boundaries.
+- Safe defaults.
+- Explicit handling of authorization and authentication errors.
+
+## Configuration and environment clarity
+
+Keep environment-specific values centralized and documented.
+
+Prefer:
+- A clear example environment file when appropriate.
+- Typed configuration parsing.
+- Validation for required environment variables.
+- Safe defaults for local development.
+- Clear separation between development, test, staging, and production behavior.
+
+Avoid:
+- Reading environment variables throughout the codebase.
+- Hardcoding model names, API URLs, secrets, limits, or feature flags in business logic.
+- Letting missing config fail much later in unrelated code.
+
+## Consistent project conventions
+
+Follow existing project conventions unless there is a strong reason to change them.
+
+Before introducing a new pattern, inspect how the project currently handles:
+- File naming.
+- Folder structure.
+- Imports and exports.
+- Error handling.
+- Logging.
+- Testing.
+- Types and schemas.
+- UI components.
+- API wrappers.
+- Configuration.
+
+Prefer consistency over personal preference.
+
+## Handoff summary after changes
+
+After completing a non-trivial task, provide a concise handoff summary.
+
+Use this format:
+
+### Handoff summary
+
+Changed:
+- <what changed>
+
+Files touched:
+- `path/to/file.ts`
+
+Validation:
+- <commands run and results>
+
+Important decisions:
+- <decision and reason>
+
+Follow-up:
+- <remaining work, risks, or `None`>
+
+## Do not hide uncertainty
+
+When unsure, be explicit.
+
+The agent should clearly state:
+- What it confirmed from the code.
+- What it inferred.
+- What remains uncertain.
+- What assumptions it made.
+- What should be verified by tests, manual QA, or a human reviewer.
+
+Avoid presenting guesses as facts.
+
+## Public API and backward compatibility
+
+Be careful when changing exported functions, public types, API contracts, config names, storage formats, routes, or user-visible behavior.
+
+Before changing a public contract:
+- Search for all usages.
+- Check tests and documentation.
+- Consider backward compatibility.
+- Add migration notes if needed.
+- Prefer additive changes when possible.
+
+Breaking changes must be explicit and justified.
+
+
 ## Non-negotiable rules
 
 ### Do not expand scope silently

@@ -21,24 +21,10 @@ export type AddonEvent = Readonly<{
   [fieldName: string]: unknown;
 }>;
 
-export type ThreadMessage = Readonly<{
-  bodyText: string;
-  from: string;
-  messageId: string;
-  sentAtIso: string;
-  subject: string;
-  to: readonly string[];
-}>;
-
 export type ThreadData = Readonly<{
-  messages: readonly ThreadMessage[];
+  latestDateIso: string;
+  latestSender: string;
+  messageCount: number;
   subject: string;
   threadId: string;
-}>;
-
-export type ThreadDebugSummary = Readonly<{
-  messageCount: number;
-  threadId: string | null;
-  totalBodyCharacters: number;
-  wasTruncated: boolean;
 }>;

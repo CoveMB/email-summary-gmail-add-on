@@ -1,12 +1,10 @@
 # OAuth Scopes
 
-No Gmail scopes are declared yet.
-
 Future scopes must be added only when a feature requires them and must be documented with the reason, user-facing behavior, and least-permission alternative considered.
 
 ## Current Position
 
-- No Gmail read scope.
+- Uses only the current-message Gmail add-on readonly scope for Gmail content access.
 - No Gmail modify scope.
 - No Calendar scope.
 - No mail send scope.
@@ -25,22 +23,10 @@ Scope:
 https://www.googleapis.com/auth/gmail.addons.current.message.readonly
 
 Reason:
-Allows EmailSummary to read only the currently opened Gmail message/thread after the user opens the add-on.
+Allows EmailSummary to read metadata for only the currently opened Gmail message/thread after user action in the add-on.
 
 Scope:
-https://www.googleapis.com/auth/gmail.addons.current.action.compose
+https://www.googleapis.com/auth/gmail.addons.execute
 
 Reason:
-Allows EmailSummary to compose a response based on the summary.
-
-Scope:
-https://www.googleapis.com/auth/script.external_request
-
-Reason:
-Allows EmailSummary be used.
-
-Scope:
-"https://www.googleapis.com/auth/gmail.addons.execute"
-
-Reason:
-Allows EmailSummary execute.
+Allows the Gmail add-on to execute inside Gmail.

@@ -23,3 +23,16 @@
 - Verify no raw email body logging occurs.
 - Verify Gemini failures show a safe user-facing error.
 - Verify AI output is clearly reviewable before user action.
+
+## Current Gmail Metadata Test
+
+1. Run `npm run check`.
+2. Run `npm run build`.
+3. Configure clasp with `rootDir` set to `dist`.
+4. Push with `npm run clasp:push`.
+5. Open Gmail and select a thread.
+6. Open the EmailSummary add-on.
+7. Click `Read thread metadata`.
+8. Confirm the card displays subject, message count, latest sender, and latest date.
+9. Confirm no email body text is displayed.
+10. Confirm OAuth scopes include only current-message readonly Gmail access plus add-on execution.

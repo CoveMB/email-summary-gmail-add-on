@@ -18,14 +18,14 @@ The product is not just an email summarizer. Its main value is helping the user 
 
 ThreadBrief should help identify:
 
-* What the email/thread is about
-* What is explicitly being asked
-* What might need attention but is not directly requested
-* What reply points may be useful
-* Whether a calendar event may be relevant
-* Whether a label may be appropriate
-* Whether follow-up is needed
-* What is uncertain or ambiguous
+- What the email/thread is about
+- What is explicitly being asked
+- What might need attention but is not directly requested
+- What reply points may be useful
+- Whether a calendar event may be relevant
+- Whether a label may be appropriate
+- Whether follow-up is needed
+- What is uncertain or ambiguous
 
 The intended user experience is calm, minimal, and trustworthy. The add-on should avoid making the user feel that AI is silently reading or acting on their inbox.
 
@@ -48,39 +48,39 @@ The MVP flow is:
 
 The result card should include:
 
-* Summary
-* Explicit action items
-* Things to consider / think about
-* Suggested reply points
-* Suggested calendar event
-* Suggested label
-* Follow-up recommendation
-* Risks / ambiguities
+- Summary
+- Explicit action items
+- Things to consider / think about
+- Suggested reply points
+- Suggested calendar event
+- Suggested label
+- Follow-up recommendation
+- Risks / ambiguities
 
 Real write actions should be limited in the MVP.
 
 Allowed in MVP:
 
-* Read the currently opened Gmail thread after user action
-* Call Gemini API after user action
-* Display AI-generated analysis
-* Create a draft reply only after explicit user click
-* Open a prefilled Google Calendar URL
-* Suggest a label without applying it
-* Suggest follow-up without modifying Gmail state
+- Read the currently opened Gmail thread after user action
+- Call Gemini API after user action
+- Display AI-generated analysis
+- Create a draft reply only after explicit user click
+- Open a prefilled Google Calendar URL
+- Suggest a label without applying it
+- Suggest follow-up without modifying Gmail state
 
 Not allowed in MVP unless explicitly requested later:
 
-* Scan the mailbox
-* Read unrelated threads
-* Automatically summarize emails without user click
-* Automatically send emails
-* Automatically apply Gmail labels
-* Automatically create Calendar events
-* Automatically create Google Tasks
-* Analyze attachments
-* Store email bodies
-* Log email bodies, prompts, or AI responses
+- Scan the mailbox
+- Read unrelated threads
+- Automatically summarize emails without user click
+- Automatically send emails
+- Automatically apply Gmail labels
+- Automatically create Calendar events
+- Automatically create Google Tasks
+- Analyze attachments
+- Store email bodies
+- Log email bodies, prompts, or AI responses
 
 ---
 
@@ -100,9 +100,9 @@ This matters because the model may infer too much. The product should not turn w
 
 Preferred framing:
 
-* Explicit action item: a direct request or clear obligation
-* Thing to consider: a possible implication, clarification, concern, or decision point
-* Risk / ambiguity: something that may require user judgment
+- Explicit action item: a direct request or clear obligation
+- Thing to consider: a possible implication, clarification, concern, or decision point
+- Risk / ambiguity: something that may require user judgment
 
 The add-on should not pretend that AI understands the full social, emotional, legal, or business context of the email.
 
@@ -125,11 +125,11 @@ GitHub repository
 
 Source of truth:
 
-* `src/` contains TypeScript source code.
-* `dist/` contains generated Apps Script output.
-* Apps Script runs JavaScript, not TypeScript.
-* TypeScript must be compiled/bundled before `clasp push`.
-* `clasp` should push from `dist/`, not directly from `src/`.
+- `src/` contains TypeScript source code.
+- `dist/` contains generated Apps Script output.
+- Apps Script runs JavaScript, not TypeScript.
+- TypeScript must be compiled/bundled before `clasp push`.
+- `clasp` should push from `dist/`, not directly from `src/`.
 
 The project should not rely on `clasp` to transpile TypeScript.
 
@@ -145,27 +145,27 @@ TypeScript should be configured strictly. Prefer explicit types and safe parsing
 
 Avoid:
 
-* `any`
-* implicit `any`
-* broad untyped objects
-* runtime module imports in generated Apps Script output
-* complex framework-style abstractions
+- `any`
+- implicit `any`
+- broad untyped objects
+- runtime module imports in generated Apps Script output
+- complex framework-style abstractions
 
 Prefer:
 
-* `unknown` for external input
-* explicit normalization/parsing functions
-* small pure functions
-* clear data types
-* strict compiler settings
-* Apps Script globals isolated to runtime-facing modules
+- `unknown` for external input
+- explicit normalization/parsing functions
+- small pure functions
+- clear data types
+- strict compiler settings
+- Apps Script globals isolated to runtime-facing modules
 
 Because Apps Script requires globally callable functions, entry points must remain accessible after bundling.
 
 Expected global entry points include:
 
-* `buildHomePage`
-* `buildGmailContextualCard`
+- `buildHomePage`
+- `buildGmailContextualCard`
 
 If the bundler wraps code in a closure, ensure these entry points are attached to `globalThis` or otherwise exposed in a way Apps Script can call.
 
@@ -199,15 +199,15 @@ Apps Script entry points and high-level request handlers.
 
 Should:
 
-* expose global Apps Script functions
-* coordinate flow between GmailReader, ThreadCleaner, PromptBuilder, GeminiClient, ResponseParser, and Cards
-* catch errors and render safe error cards
+- expose global Apps Script functions
+- coordinate flow between GmailReader, ThreadCleaner, PromptBuilder, GeminiClient, ResponseParser, and Cards
+- catch errors and render safe error cards
 
 Should not:
 
-* contain large UI-building logic
-* contain Gemini request details
-* contain thread-cleaning details
+- contain large UI-building logic
+- contain Gemini request details
+- contain thread-cleaning details
 
 ## `Cards.ts`
 
@@ -215,18 +215,18 @@ All Google CardService UI construction.
 
 Should:
 
-* build homepage card
-* build Gmail contextual card
-* build summary/result card
-* build error card
-* render confidence labels
-* render privacy footer
+- build homepage card
+- build Gmail contextual card
+- build summary/result card
+- build error card
+- render confidence labels
+- render privacy footer
 
 Should not:
 
-* read Gmail data directly
-* call Gemini directly
-* contain business logic beyond display formatting
+- read Gmail data directly
+- call Gemini directly
+- contain business logic beyond display formatting
 
 ## `GmailReader.ts`
 
@@ -234,17 +234,17 @@ Gmail-specific read logic.
 
 Should:
 
-* use the Gmail add-on current-message access token
-* read the currently opened message/thread only
-* extract thread metadata and message bodies into internal types
+- use the Gmail add-on current-message access token
+- read the currently opened message/thread only
+- extract thread metadata and message bodies into internal types
 
 Should not:
 
-* scan the mailbox
-* search Gmail
-* read unrelated threads
-* log message bodies
-* store message bodies
+- scan the mailbox
+- search Gmail
+- read unrelated threads
+- log message bodies
+- store message bodies
 
 ## `ThreadCleaner.ts`
 
@@ -252,12 +252,12 @@ Pure functions for preparing thread text for AI.
 
 Should:
 
-* strip quoted replies where reasonably safe
-* trim common signatures
-* preserve meaningful content
-* cap number of messages
-* cap total characters
-* report truncation metadata
+- strip quoted replies where reasonably safe
+- trim common signatures
+- preserve meaningful content
+- cap number of messages
+- cap total characters
+- report truncation metadata
 
 Should be testable outside Apps Script.
 
@@ -267,10 +267,10 @@ Pure functions for building AI prompts.
 
 Should:
 
-* build the email analysis prompt
-* define task categories clearly
-* request strict JSON output
-* include truncation notices when relevant
+- build the email analysis prompt
+- define task categories clearly
+- request strict JSON output
+- include truncation notices when relevant
 
 Should not call Gemini directly.
 
@@ -280,17 +280,17 @@ All Gemini API integration.
 
 Should:
 
-* support mock mode by default
-* read API key from Apps Script Script Properties only when real mode is enabled
-* call Gemini API through `UrlFetchApp`
-* avoid logging prompts or responses
-* return raw model text to the parser
+- support mock mode by default
+- read API key from Apps Script Script Properties only when real mode is enabled
+- call Gemini API through `UrlFetchApp`
+- avoid logging prompts or responses
+- return raw model text to the parser
 
 Should not:
 
-* hardcode secrets
-* store prompts/responses
-* decide how to render output
+- hardcode secrets
+- store prompts/responses
+- decide how to render output
 
 ## `ResponseParser.ts`
 
@@ -298,13 +298,13 @@ Pure parsing and normalization of AI output.
 
 Should:
 
-* strip Markdown code fences if needed
-* parse JSON safely
-* normalize unknown input
-* fill defaults
-* validate confidence values
-* truncate long display fields
-* return safe fallback analysis on parse failure
+- strip Markdown code fences if needed
+- parse JSON safely
+- normalize unknown input
+- fill defaults
+- validate confidence values
+- truncate long display fields
+- return safe fallback analysis on parse failure
 
 Should not throw raw parse errors into UI handlers.
 
@@ -314,16 +314,16 @@ User-triggered action helpers.
 
 MVP actions:
 
-* create draft reply after user click
-* build Google Calendar create-event URL
-* support label/follow-up suggestions as UI-only recommendations
+- create draft reply after user click
+- build Google Calendar create-event URL
+- support label/follow-up suggestions as UI-only recommendations
 
 Should not:
 
-* send email automatically
-* create Calendar events directly in v1
-* apply Gmail labels in v1
-* modify Gmail state in v1
+- send email automatically
+- create Calendar events directly in v1
+- apply Gmail labels in v1
+- modify Gmail state in v1
 
 ## `Config.ts`
 
@@ -331,13 +331,13 @@ Typed application configuration.
 
 Should include:
 
-* app name
-* mock Gemini mode
-* model name
-* max thread characters
-* max messages
-* max output tokens
-* temperature
+- app name
+- mock Gemini mode
+- model name
+- max thread characters
+- max messages
+- max output tokens
+- temperature
 
 Should not contain secrets.
 
@@ -347,13 +347,13 @@ Shared TypeScript types.
 
 Should include:
 
-* app config types
-* Gmail event types
-* thread data types
-* clean thread types
-* AI analysis types
-* confidence types
-* action owner types
+- app config types
+- Gmail event types
+- thread data types
+- clean thread types
+- AI analysis types
+- confidence types
+- action owner types
 
 ---
 
@@ -365,17 +365,17 @@ The MVP should prefer add-on current-message scopes over broad Gmail API scopes.
 
 Desired initial behavior:
 
-* read only the currently opened Gmail thread
-* only after user clicks `Summarize thread`
+- read only the currently opened Gmail thread
+- only after user clicks `Summarize thread`
 
 Avoid broad scopes unless explicitly required and reviewed:
 
-* `gmail.readonly`
-* `gmail.modify`
-* `mail.google.com`
-* `calendar`
-* `calendar.events`
-* broad mailbox search scopes
+- `gmail.readonly`
+- `gmail.modify`
+- `mail.google.com`
+- `calendar`
+- `calendar.events`
+- broad mailbox search scopes
 
 Labels and Calendar events are suggestions in v1.
 
@@ -385,11 +385,11 @@ Do not add Calendar write scopes in v1. Use a prefilled Google Calendar URL inst
 
 Every OAuth scope must be documented in `docs/oauth-scopes.md` with:
 
-* scope value
-* why it is needed
-* what feature uses it
-* why a narrower scope is not enough
-* whether it is MVP or future-only
+- scope value
+- why it is needed
+- what feature uses it
+- why a narrower scope is not enough
+- whether it is MVP or future-only
 
 ---
 
@@ -399,16 +399,16 @@ ThreadBrief deals with email content, so privacy boundaries are core product beh
 
 Rules:
 
-* Do not read email content until the user clicks `Summarize thread`.
-* Do not scan the mailbox.
-* Do not summarize automatically when a thread opens.
-* Do not store email bodies by default.
-* Do not log email bodies.
-* Do not log AI prompts.
-* Do not log AI responses.
-* Do not log API keys.
-* Do not log OAuth tokens.
-* Do not include raw email content in error messages.
+- Do not read email content until the user clicks `Summarize thread`.
+- Do not scan the mailbox.
+- Do not summarize automatically when a thread opens.
+- Do not store email bodies by default.
+- Do not log email bodies.
+- Do not log AI prompts.
+- Do not log AI responses.
+- Do not log API keys.
+- Do not log OAuth tokens.
+- Do not include raw email content in error messages.
 
 The UI should clearly say that the opened thread is sent to Gemini when real Gemini mode is enabled.
 
@@ -424,11 +424,11 @@ Gemini integration should be isolated behind `GeminiClient.ts`.
 
 The rest of the app should not care whether the model is:
 
-* mock Gemini
-* Gemini free tier
-* paid Gemini API
-* Vertex AI Gemini
-* another provider in the future
+- mock Gemini
+- Gemini free tier
+- paid Gemini API
+- Vertex AI Gemini
+- another provider in the future
 
 The app should use a structured JSON prompt and a robust parser.
 
@@ -440,17 +440,17 @@ AI output must include evidence and confidence where possible.
 
 The model should distinguish:
 
-* facts from interpretation
-* explicit action items from things to consider
-* high-confidence items from uncertain ones
+- facts from interpretation
+- explicit action items from things to consider
+- high-confidence items from uncertain ones
 
 Never trust the model to make irreversible changes.
 
 For MVP:
 
-* AI can suggest
-* user decides
-* user confirms any draft/send/calendar action
+- AI can suggest
+- user decides
+- user confirms any draft/send/calendar action
 
 ---
 
@@ -492,12 +492,12 @@ Gmail Add-ons use CardService. Do not try to build a custom React/HTML interface
 
 The UI should be:
 
-* minimal
-* readable
-* calm
-* sectioned clearly
-* explicit about uncertainty
-* explicit about privacy
+- minimal
+- readable
+- calm
+- sectioned clearly
+- explicit about uncertainty
+- explicit about privacy
 
 Result card section order:
 
@@ -523,25 +523,25 @@ All user-facing errors should be safe.
 
 Never show:
 
-* raw stack traces
-* raw email content
-* raw prompt
-* raw AI response
-* API key
-* OAuth token
+- raw stack traces
+- raw email content
+- raw prompt
+- raw AI response
+- API key
+- OAuth token
 
 Use friendly messages such as:
 
-* `Could not read the opened thread.`
-* `Gemini API key is missing.`
-* `AI response could not be parsed. Try again.`
-* `The thread may be too long. Try summarizing the latest messages only.`
+- `Could not read the opened thread.`
+- `Gemini API key is missing.`
+- `AI response could not be parsed. Try again.`
+- `The thread may be too long. Try summarizing the latest messages only.`
 
 Errors can include non-sensitive metadata such as:
 
-* error type
-* whether mock mode is enabled
-* whether API key is configured
+- error type
+- whether mock mode is enabled
+- whether API key is configured
 
 Logs should be minimal and non-sensitive.
 
@@ -553,31 +553,31 @@ Unit-test pure functions only.
 
 Good test targets:
 
-* response parsing
-* confidence normalization
-* malformed JSON fallback
-* fenced JSON handling
-* thread cleaning
-* quote stripping
-* truncation
-* prompt building
-* calendar URL generation
+- response parsing
+- confidence normalization
+- malformed JSON fallback
+- fenced JSON handling
+- thread cleaning
+- quote stripping
+- truncation
+- prompt building
+- calendar URL generation
 
 Avoid trying to deeply unit-test Apps Script services such as:
 
-* `CardService`
-* `GmailApp`
-* `UrlFetchApp`
-* `PropertiesService`
+- `CardService`
+- `GmailApp`
+- `UrlFetchApp`
+- `PropertiesService`
 
 Those should be covered mostly by manual testing in Apps Script/Gmail.
 
 `npm run check` should run:
 
-* format check
-* lint
-* tests
-* build
+- format check
+- lint
+- tests
+- build
 
 No change should be considered complete unless `npm run check` passes or the failure is explicitly documented.
 
@@ -587,11 +587,11 @@ No change should be considered complete unless `npm run check` passes or the fai
 
 ThreadBrief uses:
 
-* TypeScript strict mode
-* ESLint flat config
-* TypeScript-aware ESLint rules
-* Prettier for formatting
-* `eslint-config-prettier` to prevent conflicts
+- TypeScript strict mode
+- ESLint flat config
+- TypeScript-aware ESLint rules
+- Prettier for formatting
+- `eslint-config-prettier` to prevent conflicts
 
 Prettier is the formatting source of truth.
 
@@ -599,17 +599,17 @@ ESLint should enforce correctness and maintainability, not compete with Prettier
 
 Expected standards:
 
-* no `var`
-* prefer `const`
-* avoid `any`
-* use `unknown` for external input
-* explicit parsing for unknown data
-* no unused variables except intentionally underscore-prefixed variables
-* no `console.log`
-* allow `console.warn` and `console.error` only for non-sensitive metadata
-* small functions
-* clear names
-* no clever abstractions for simple Apps Script flows
+- no `var`
+- prefer `const`
+- avoid `any`
+- use `unknown` for external input
+- explicit parsing for unknown data
+- no unused variables except intentionally underscore-prefixed variables
+- no `console.log`
+- allow `console.warn` and `console.error` only for non-sensitive metadata
+- small functions
+- clear names
+- no clever abstractions for simple Apps Script flows
 
 ---
 
@@ -619,16 +619,16 @@ Even though ThreadBrief starts as a personal add-on, it should be structured as 
 
 This means:
 
-* document every OAuth scope
-* keep scopes narrow
-* include privacy and security documentation
-* avoid storing email content
-* avoid hidden background processing
-* avoid broad Gmail permissions
-* keep AI data-processing behavior transparent
-* keep user confirmation for write actions
-* maintain a manual test plan
-* keep a future demo-script document
+- document every OAuth scope
+- keep scopes narrow
+- include privacy and security documentation
+- avoid storing email content
+- avoid hidden background processing
+- avoid broad Gmail permissions
+- keep AI data-processing behavior transparent
+- keep user confirmation for write actions
+- maintain a manual test plan
+- keep a future demo-script document
 
 Marketplace readiness does not mean implementing every feature now. It means avoiding architectural choices that make later review harder.
 
@@ -638,29 +638,29 @@ Marketplace readiness does not mean implementing every feature now. It means avo
 
 These are intentionally postponed:
 
-* Apply Gmail labels directly
-* Create Calendar events directly
-* Create Google Tasks
-* Analyze attachments
-* Search mailbox
-* Summarize multiple unrelated threads
-* Per-user settings UI
-* Team/admin settings
-* Cloud Run backend
-* Paid Vertex AI provider
-* Multi-provider AI abstraction
-* Usage tracking
-* Billing
-* Marketplace publication flow
+- Apply Gmail labels directly
+- Create Calendar events directly
+- Create Google Tasks
+- Analyze attachments
+- Search mailbox
+- Summarize multiple unrelated threads
+- Per-user settings UI
+- Team/admin settings
+- Cloud Run backend
+- Paid Vertex AI provider
+- Multi-provider AI abstraction
+- Usage tracking
+- Billing
+- Marketplace publication flow
 
 If implementing any v2 feature, update:
 
-* `docs/project-context.md`
-* `docs/oauth-scopes.md`
-* `docs/architecture.md`
-* `docs/manual-test-plan.md`
-* `PRIVACY.md`
-* `SECURITY.md`
+- `docs/project-context.md`
+- `docs/oauth-scopes.md`
+- `docs/architecture.md`
+- `docs/manual-test-plan.md`
+- `PRIVACY.md`
+- `SECURITY.md`
 
 ---
 
@@ -683,10 +683,10 @@ For each coding task:
 
 If a task appears to require a broader scope, do not silently add it. Instead:
 
-* document why it may be needed
-* propose the minimal scope
-* explain the review/privacy impact
-* stop for explicit confirmation
+- document why it may be needed
+- propose the minimal scope
+- explain the review/privacy impact
+- stop for explicit confirmation
 
 ---
 
@@ -694,19 +694,19 @@ If a task appears to require a broader scope, do not silently add it. Instead:
 
 The following rules should not be violated without explicit human approval:
 
-* Do not scan the mailbox.
-* Do not read unrelated emails.
-* Do not summarize automatically without user click.
-* Do not store email bodies by default.
-* Do not log email bodies.
-* Do not log AI prompts.
-* Do not log AI responses.
-* Do not commit API keys.
-* Do not commit `.clasprc.json`.
-* Do not add `gmail.modify` casually.
-* Do not add Calendar write scopes casually.
-* Do not auto-send email.
-* Do not create irreversible actions from AI output without user confirmation.
+- Do not scan the mailbox.
+- Do not read unrelated emails.
+- Do not summarize automatically without user click.
+- Do not store email bodies by default.
+- Do not log email bodies.
+- Do not log AI prompts.
+- Do not log AI responses.
+- Do not commit API keys.
+- Do not commit `.clasprc.json`.
+- Do not add `gmail.modify` casually.
+- Do not add Calendar write scopes casually.
+- Do not auto-send email.
+- Do not create irreversible actions from AI output without user confirmation.
 
 ---
 
