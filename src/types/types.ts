@@ -1,6 +1,8 @@
 export type AppConfig = Readonly<{
   APP_NAME: string;
+  GEMINI_MAX_OUTPUT_TOKENS: number;
   GEMINI_MODEL: string;
+  GEMINI_TEMPERATURE: number;
   MAX_MESSAGES: number;
   MAX_THREAD_CHARS: number;
   USE_MOCK_GEMINI: boolean;
@@ -56,6 +58,8 @@ export type Confidence = 'high' | 'medium' | 'low';
 
 export type ActionOwner = 'recipient' | 'sender' | 'third_party' | 'unclear';
 
+export type UrgencyOrPressure = 'none' | 'low' | 'medium' | 'high' | 'unclear';
+
 export type ExplicitActionItem = Readonly<{
   description: string;
   owner: ActionOwner;
@@ -92,6 +96,18 @@ export type FollowUpRecommendation = Readonly<{
   followUpDateIso?: string;
 }>;
 
+export type SocialToneAnalysis = Readonly<{
+  summary: string;
+  apparentTone: readonly string[];
+  socialSignals: readonly string[];
+  possibleSenderState: string | null;
+  relationalStance: string | null;
+  urgencyOrPressure: UrgencyOrPressure;
+  evidence: string;
+  confidence: Confidence;
+  cautions: readonly string[];
+}>;
+
 export type EmailAnalysis = Readonly<{
   summary: string;
   explicitActionItems: readonly ExplicitActionItem[];
@@ -100,6 +116,40 @@ export type EmailAnalysis = Readonly<{
   suggestedCalendarEvent?: SuggestedCalendarEvent;
   suggestedLabel?: SuggestedLabel;
   followUpRecommendation: FollowUpRecommendation;
+  socialTone: SocialToneAnalysis;
   risksAndAmbiguities: readonly string[];
   overallConfidence: Confidence;
 }>;
+
+export type ThreadSummaryErrorKind =
+  | 'no_gmail_context'
+  | 'gmail_read_failure'
+  | 'parse_failure'
+  | 'unexpected_failure';
+
+export type UserSafeThreadSummaryError = Readonly<{
+  kind: ThreadSummaryErrorKind;
+  message: string;
+  title: string;
+}>;
+
+export type TypeOf =
+  | 'undefined'
+  | 'object'
+  | 'boolean'
+  | 'number'
+  | 'bigint'
+  | 'string'
+  | 'symbol'
+  | 'function';
+
+export type EnvironmentVariableCastValue<TCastType extends TypeOf> = {
+  undefined: undefined;
+  object: object;
+  boolean: boolean;
+  number: number;
+  bigint: bigint;
+  string: string;
+  symbol: symbol;
+  function: never;
+}[TCastType];

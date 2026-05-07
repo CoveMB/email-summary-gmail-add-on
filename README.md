@@ -1,6 +1,6 @@
-# ThreadBrief
+# EmailSummary
 
-ThreadBrief is a personal Google Workspace Gmail Add-on scaffold for summarizing the currently opened Gmail thread.
+EmailSummary is a personal Google Workspace Gmail Add-on scaffold for summarizing the currently opened Gmail thread.
 
 The MVP goal is a private add-on that can later let a user click "Summarize thread" and review structured output such as a summary, action items, reply points, follow-up recommendations, and risks. Product logic is intentionally not implemented in this initialization step.
 
@@ -14,7 +14,7 @@ The architecture is personal-use ready while keeping a Marketplace-ready path: l
 - Rollup for Apps Script-compatible bundling
 - clasp for Apps Script deployment
 - Vitest for pure-function tests
-- Gemini API integration later
+- Gemini API integration behind mock mode
 
 ## Repository Model
 
@@ -57,6 +57,47 @@ The build command creates:
 
 The bundled JavaScript is intended for Apps Script V8 and does not rely on runtime module imports.
 
+## Gemini Real Mode Manual Testing
+
+EmailSummary runs in mock Gemini mode by default. Mock mode should remain the normal development
+mode because it avoids network calls and avoids sending email content to Gemini.
+
+Real Gemini mode is available for controlled personal testing only. If you use a free-tier Gemini
+API key, treat it as a personal testing resource, verify Google's current terms and quota limits,
+and do not use it for Marketplace, shared, production, or high-volume testing.
+
+When real mode is enabled, cleaned text from the currently opened Gmail thread is sent to the Gemini
+API after the user clicks `Summarize thread`. Do not use raw personal, confidential, regulated,
+client, financial, medical, legal, credential, or otherwise sensitive emails for early tests. Use
+synthetic or non-sensitive test threads.
+
+To set the Gemini API key in Apps Script:
+
+1. Open the Apps Script project.
+2. Go to Project Settings.
+3. Add a Script Property named `GEMINI_API_KEY`.
+4. Set its value to the real Gemini API key.
+
+Do not place the key in source files, manifests, local environment files, tests, or documentation.
+
+To switch from mock mode to real mode for a manual test:
+
+1. Confirm `GEMINI_API_KEY` is configured in Apps Script Script Properties.
+2. In `src/config/Config.ts`, temporarily set `USE_MOCK_GEMINI` to `false`.
+3. Run `pnpm run check`.
+4. Run `pnpm run build`.
+5. Push the generated `dist/` output with clasp.
+6. Test only with synthetic or non-sensitive Gmail threads.
+
+To switch back to mock mode:
+
+1. In `src/config/Config.ts`, set `USE_MOCK_GEMINI` back to `true`.
+2. Run `pnpm run check`.
+3. Run `pnpm run build`.
+4. Push `dist/` again if you had deployed real mode.
+
+Do not commit real-mode test changes unless a future task explicitly requires it.
+
 ## clasp Deployment Placeholder
 
 When clasp is configured later, `.clasp.json` should point at `dist/`:
@@ -92,4 +133,4 @@ Deployment automation should stay separate from CI and should be added only when
 
 ## Security And Privacy
 
-This scaffold does not read Gmail content, call Gemini, store email text, or declare broad OAuth scopes. Future implementation should process only the currently opened Gmail thread after explicit user action, avoid raw email logging, and keep secrets in Apps Script Script Properties.
+EmailSummary should process only the currently opened Gmail thread after explicit user action, avoid raw email logging, and keep secrets in Apps Script Script Properties. Mock mode does not call Gemini. Real mode sends cleaned thread text to Gemini and should be used only for controlled personal testing at this stage.

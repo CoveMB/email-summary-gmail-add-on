@@ -33,6 +33,42 @@ export const analysisFieldNames = {
     external: 'should_follow_up',
     internal: 'shouldFollowUp',
   },
+  socialTone: {
+    external: 'social_tone',
+    internal: 'socialTone',
+  },
+  socialToneApparentTone: {
+    external: 'apparent_tone',
+    internal: 'apparentTone',
+  },
+  socialToneCautions: {
+    external: 'cautions',
+    internal: 'cautions',
+  },
+  socialToneEvidence: {
+    external: 'evidence',
+    internal: 'evidence',
+  },
+  socialTonePossibleSenderState: {
+    external: 'possible_sender_state',
+    internal: 'possibleSenderState',
+  },
+  socialToneRelationalStance: {
+    external: 'relational_stance',
+    internal: 'relationalStance',
+  },
+  socialToneSocialSignals: {
+    external: 'social_signals',
+    internal: 'socialSignals',
+  },
+  socialToneSummary: {
+    external: 'summary',
+    internal: 'summary',
+  },
+  socialToneUrgencyOrPressure: {
+    external: 'urgency_or_pressure',
+    internal: 'urgencyOrPressure',
+  },
   sourceMessageIds: {
     external: 'source_message_ids',
     internal: 'sourceMessageIds',

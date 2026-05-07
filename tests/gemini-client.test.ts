@@ -76,13 +76,13 @@ describe('analyzeThreadWithGemini', () => {
     const analysis = parseGeminiAnalysis(analyzeThreadWithGemini('prompt'));
 
     expect(analysis.summary).toBe(
-      'ThreadBrief mock analysis response. No Gemini API call was made.'
+      'EmailSummary mock analysis response. No Gemini API call was made.'
     );
     expect(analysis.explicitActionItems[0]?.description).toBe(
       'Review the thread and decide whether a real Gemini call should be enabled.'
     );
     expect(analysis.followUpRecommendation.shouldFollowUp).toBe(false);
-    expect(analysis.suggestedLabel?.name).toBe('ThreadBrief Mock');
+    expect(analysis.suggestedLabel?.name).toBe('EmailSummary Mock');
     expect(analysis.risksAndAmbiguities).toEqual([
       'This is a deterministic mock response and not an interpretation of real email content.',
     ]);

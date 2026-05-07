@@ -1,8 +1,8 @@
-# ThreadBrief Project Context
+# EmailSummary Project Context
 
 ## Purpose of this document
 
-This document gives context to make changes to ThreadBrief in a way that preserves the product intent, architecture, privacy boundaries, and Marketplace-readiness of the project.
+This document gives context to make changes to EmailSummary in a way that preserves the product intent, architecture, privacy boundaries, and Marketplace-readiness of the project.
 
 The goal is to prevent accidental scope creep, broad OAuth permissions, privacy regressions, or over-engineered implementation choices.
 
@@ -10,13 +10,13 @@ The goal is to prevent accidental scope creep, broad OAuth permissions, privacy 
 
 # 1. Product intent
 
-ThreadBrief is a personal Google Workspace Gmail Add-on that may later become Marketplace-ready.
+EmailSummary is a personal Google Workspace Gmail Add-on that may later become Marketplace-ready.
 
 The add-on appears when the user opens a Gmail thread. The user can click a button to summarize the currently opened thread using AI. The add-on then displays a structured decision-support summary.
 
 The product is not just an email summarizer. Its main value is helping the user understand what the email means in practical terms.
 
-ThreadBrief should help identify:
+EmailSummary should help identify:
 
 - What the email/thread is about
 - What is explicitly being asked
@@ -86,7 +86,7 @@ Not allowed in MVP unless explicitly requested later:
 
 # 3. Product framing
 
-ThreadBrief should frame AI output carefully.
+EmailSummary should frame AI output carefully.
 
 Use the phrase:
 
@@ -110,7 +110,7 @@ The add-on should not pretend that AI understands the full social, emotional, le
 
 # 4. Architecture overview
 
-ThreadBrief uses this architecture:
+EmailSummary uses this architecture:
 
 ```text
 GitHub repository
@@ -359,7 +359,7 @@ Should include:
 
 # 7. OAuth and permissions approach
 
-ThreadBrief should use the narrowest practical OAuth scopes.
+EmailSummary should use the narrowest practical OAuth scopes.
 
 The MVP should prefer add-on current-message scopes over broad Gmail API scopes.
 
@@ -395,7 +395,7 @@ Every OAuth scope must be documented in `docs/oauth-scopes.md` with:
 
 # 8. Privacy and data handling
 
-ThreadBrief deals with email content, so privacy boundaries are core product behavior.
+EmailSummary deals with email content, so privacy boundaries are core product behavior.
 
 Rules:
 
@@ -585,7 +585,7 @@ No change should be considered complete unless `npm run check` passes or the fai
 
 # 14. Linting and formatting approach
 
-ThreadBrief uses:
+EmailSummary uses:
 
 - TypeScript strict mode
 - ESLint flat config
@@ -615,7 +615,7 @@ Expected standards:
 
 # 15. Marketplace-readiness principles
 
-Even though ThreadBrief starts as a personal add-on, it should be structured as if it may later be submitted to Google Workspace Marketplace.
+Even though EmailSummary starts as a personal add-on, it should be structured as if it may later be submitted to Google Workspace Marketplace.
 
 This means:
 
@@ -712,4 +712,4 @@ The following rules should not be violated without explicit human approval:
 
 # 19. Short project summary for agents
 
-ThreadBrief is a privacy-conscious Gmail Add-on that summarizes only the currently opened thread after the user clicks a button. It uses TypeScript source code bundled into Apps Script-compatible JavaScript, rendered through Google CardService, and calls Gemini API through an isolated client. The MVP is suggestion-first: it may create a draft reply after user confirmation, but calendar events, labels, and follow-up markers remain suggestions only. The project should remain Marketplace-ready by keeping OAuth scopes narrow, avoiding sensitive logging/storage, validating AI output, and documenting all permission/data-processing decisions.
+EmailSummary is a privacy-conscious Gmail Add-on that summarizes only the currently opened thread after the user clicks a button. It uses TypeScript source code bundled into Apps Script-compatible JavaScript, rendered through Google CardService, and calls Gemini API through an isolated client. The MVP is suggestion-first: it may create a draft reply after user confirmation, but calendar events, labels, and follow-up markers remain suggestions only. The project should remain Marketplace-ready by keeping OAuth scopes narrow, avoiding sensitive logging/storage, validating AI output, and documenting all permission/data-processing decisions.

@@ -6,10 +6,23 @@ import type {
   EmailAnalysis,
   ExplicitActionItem,
   FollowUpRecommendation,
+  SocialToneAnalysis,
   SuggestedCalendarEvent,
   SuggestedLabel,
   ThingToConsider,
 } from '../src/types/types';
+
+const buildSocialToneAnalysis = (): SocialToneAnalysis => ({
+  apparentTone: ['polite'],
+  cautions: ['Tone is inferred from text only.'],
+  confidence: 'medium',
+  evidence: 'The sender asks for confirmation by Friday.',
+  possibleSenderState: 'The sender may be communicating with time pressure.',
+  relationalStance: 'collaborative but deadline-oriented',
+  socialSignals: ['The request is direct but not hostile.'],
+  summary: 'The message may come across as polite and time-sensitive.',
+  urgencyOrPressure: 'medium',
+});
 
 const buildMinimalAnalysis = (): EmailAnalysis => ({
   explicitActionItems: [],
@@ -21,6 +34,7 @@ const buildMinimalAnalysis = (): EmailAnalysis => ({
   overallConfidence: 'medium',
   risksAndAmbiguities: [],
   suggestedReplyPoints: [],
+  socialTone: buildSocialToneAnalysis(),
   summary: 'No summary generated yet.',
   thingsToConsider: [],
 });
@@ -75,6 +89,7 @@ describe('EmailAnalysis types', () => {
       suggestedCalendarEvent,
       suggestedLabel,
       suggestedReplyPoints: ['Confirm proposal deadline.', 'Ask who owns final approval.'],
+      socialTone: buildSocialToneAnalysis(),
       summary: 'Proposal review requires recipient action.',
       thingsToConsider: [thingToConsider],
     };

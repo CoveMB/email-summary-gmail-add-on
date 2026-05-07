@@ -51,9 +51,42 @@ describe('buildEmailAnalysisPrompt', () => {
     expect(prompt).toContain('"suggested_calendar_event"');
     expect(prompt).toContain('"suggested_label"');
     expect(prompt).toContain('"follow_up_recommendation"');
+    expect(prompt).toContain('"social_tone"');
+    expect(prompt).toContain('"apparent_tone"');
+    expect(prompt).toContain('"social_signals"');
+    expect(prompt).toContain('"possible_sender_state"');
+    expect(prompt).toContain('"relational_stance"');
+    expect(prompt).toContain('"urgency_or_pressure"');
+    expect(prompt).toContain('"evidence"');
+    expect(prompt).toContain('"cautions"');
     expect(prompt).toContain('"risks_and_ambiguities"');
     expect(prompt).toContain('"overall_confidence"');
     expect(prompt).not.toContain('"explicitActionItems"');
+  });
+
+  it('includes non-diagnostic social tone caution instructions', () => {
+    const prompt = buildEmailAnalysisPrompt(buildCleanThreadText());
+
+    expect(prompt).toContain('Analyze the communication tone and social tone');
+    expect(prompt).toContain('Identify observable emotional or interpersonal signals only.');
+    expect(prompt).toContain('Do not diagnose the sender');
+    expect(prompt).toContain("claim to know the sender's actual psychological state");
+    expect(prompt).toContain('Distinguish observed wording from social-tone interpretation.');
+    expect(prompt).toContain('Include uncertainty and alternative explanations');
+    expect(prompt).toContain('If there is not enough evidence for social tone, say so.');
+  });
+
+  it('explicitly forbids clinical or mental-health labels', () => {
+    const prompt = buildEmailAnalysisPrompt(buildCleanThreadText());
+
+    expect(prompt).toContain('Do not use clinical or mental-health labels');
+    expect(prompt).toContain('anxious');
+    expect(prompt).toContain('manipulative');
+    expect(prompt).toContain('narcissistic');
+    expect(prompt).toContain('depressed');
+    expect(prompt).toContain('Prefer cautious wording');
+    expect(prompt).toContain('may come across as');
+    expect(prompt).toContain('possible signal');
   });
 
   it('includes message counts and non-truncated status', () => {

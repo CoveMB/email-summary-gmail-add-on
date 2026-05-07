@@ -1,7 +1,7 @@
 {
-  "name": "threadbrief-gmail-addon",
+  "name": "email-summary-gmail-addon",
   "version": "0.1.0",
-  "description": "Personal Google Workspace Gmail Add-on scaffold for ThreadBrief.",
+  "description": "Personal Google Workspace Gmail Add-on scaffold for EmailSummary.",
   "private": true,
   "type": "module",
   "scripts": {

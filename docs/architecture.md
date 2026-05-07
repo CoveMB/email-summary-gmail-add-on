@@ -1,6 +1,6 @@
 # Architecture
 
-ThreadBrief keeps source code and deployable Apps Script output separate.
+EmailSummary keeps source code and deployable Apps Script output separate.
 
 ```text
 GitHub repo

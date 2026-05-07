@@ -32,6 +32,27 @@ const schemaExample = {
     name: 'short label name',
     reason: 'why this label fits',
   },
+  [analysisFieldNames.socialTone.external]: {
+    [analysisFieldNames.socialToneApparentTone.external]: [
+      'observable tone labels, such as warm, neutral, formal, tense, demanding, avoidant, collaborative, or unclear',
+    ],
+    cautions: [
+      'Tone is inferred from text only.',
+      "The sender's actual emotional state cannot be determined from the email alone.",
+    ],
+    confidence: 'high | medium | low',
+    evidence: 'specific wording or context supporting the tone interpretation',
+    [analysisFieldNames.socialTonePossibleSenderState.external]:
+      'cautious communication-signal interpretation or null; never diagnostic',
+    [analysisFieldNames.socialToneRelationalStance.external]:
+      'cautious relational stance summary or null',
+    [analysisFieldNames.socialToneSocialSignals.external]: [
+      'observable emotional or interpersonal signal with evidence',
+    ],
+    summary: 'cautious social-tone summary',
+    [analysisFieldNames.socialToneUrgencyOrPressure.external]:
+      'none | low | medium | high | unclear',
+  },
   [analysisFieldNames.suggestedReplyPoints.external]: ['point to include in reply'],
   summary: 'brief thread summary',
   [analysisFieldNames.thingsToConsider.external]: [
@@ -60,6 +81,14 @@ export const buildEmailAnalysisPrompt = (cleanThread: CleanThreadText): string =
     '- Do not invent tasks, deadlines, owners, events, labels, or facts not supported by the thread.',
     '- Use confidence levels exactly: high, medium, or low.',
     '- Separate evidence from interpretation: summarize what the thread says, and put uncertainty or interpretation in thingsToConsider or risksAndAmbiguities.',
+    '- Analyze the communication tone and social tone of the email/thread.',
+    '- Identify observable emotional or interpersonal signals only.',
+    "- Do not diagnose the sender or claim to know the sender's actual psychological state.",
+    '- Do not use clinical or mental-health labels such as anxious, manipulative, narcissistic, depressed, or similar labels.',
+    '- Distinguish observed wording from social-tone interpretation.',
+    '- Include uncertainty and alternative explanations for tone or interpersonal subtext.',
+    '- Prefer cautious wording such as "may come across as", "appears to be communicating with", "possible signal", and "this is uncertain because".',
+    '- If there is not enough evidence for social tone, say so.',
     '',
     'Expected JSON schema keys:',
     JSON.stringify(schemaExample, null, 2),

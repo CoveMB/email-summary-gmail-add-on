@@ -9,6 +9,18 @@ import {
   stripMarkdownCodeFences,
 } from '../src/domain/ResponseParser';
 
+const expectedDefaultSocialToneAnalysis = {
+  apparentTone: [],
+  cautions: ['Tone analysis is uncertain and should be reviewed cautiously.'],
+  confidence: 'low',
+  evidence: '',
+  possibleSenderState: null,
+  relationalStance: null,
+  socialSignals: [],
+  summary: 'No reliable social-tone analysis available.',
+  urgencyOrPressure: 'unclear',
+} as const;
+
 describe('normalizeConfidence', () => {
   it('accepts known confidence values case-insensitively', () => {
     expect(normalizeConfidence('high')).toBe('high');
@@ -47,6 +59,7 @@ describe('createEmptyEmailAnalysis', () => {
       overallConfidence: 'low',
       risksAndAmbiguities: [],
       suggestedReplyPoints: [],
+      socialTone: expectedDefaultSocialToneAnalysis,
       summary: '',
       thingsToConsider: [],
     });
@@ -117,6 +130,22 @@ describe('parseGeminiAnalysis', () => {
           reason: 'Thread discusses an agreement.',
         },
         suggestedReplyPoints: ['Confirm signature timing.'],
+        social_tone: {
+          apparent_tone: ['polite', 'time-sensitive', 'direct'],
+          cautions: [
+            'Tone is inferred from text only.',
+            'The sender actual emotional state cannot be determined from the email alone.',
+          ],
+          confidence: 'medium',
+          evidence: 'The sender asks whether the recipient can confirm by Friday.',
+          possible_sender_state: 'The sender may be feeling time pressure, but this is uncertain.',
+          relational_stance: 'collaborative but deadline-oriented',
+          social_signals: [
+            'The sender asks for confirmation quickly but does not use hostile wording.',
+          ],
+          summary: 'The email comes across as polite but somewhat urgent.',
+          urgency_or_pressure: 'medium',
+        },
         summary: 'Recipient needs to send a signed agreement.',
         thingsToConsider: [
           {
@@ -141,6 +170,20 @@ describe('parseGeminiAnalysis', () => {
     expect(analysis.suggestedCalendarEvent?.title).toBe('Agreement review');
     expect(analysis.suggestedLabel?.name).toBe('Contracts');
     expect(analysis.followUpRecommendation.shouldFollowUp).toBe(true);
+    expect(analysis.socialTone).toEqual({
+      apparentTone: ['polite', 'time-sensitive', 'direct'],
+      cautions: [
+        'Tone is inferred from text only.',
+        'The sender actual emotional state cannot be determined from the email alone.',
+      ],
+      confidence: 'medium',
+      evidence: 'The sender asks whether the recipient can confirm by Friday.',
+      possibleSenderState: 'The sender may be feeling time pressure, but this is uncertain.',
+      relationalStance: 'collaborative but deadline-oriented',
+      socialSignals: ['The sender asks for confirmation quickly but does not use hostile wording.'],
+      summary: 'The email comes across as polite but somewhat urgent.',
+      urgencyOrPressure: 'medium',
+    });
     expect(analysis.overallConfidence).toBe('high');
   });
 
@@ -204,6 +247,7 @@ describe('parseGeminiAnalysis', () => {
     expect(analysis.suggestedLabel?.name).toBe('Mock');
     expect(analysis.suggestedReplyPoints).toEqual(['Confirm mock mode is expected.']);
     expect(analysis.thingsToConsider[0]?.sourceMessageIds).toEqual(['message-124']);
+    expect(analysis.socialTone).toEqual(expectedDefaultSocialToneAnalysis);
   });
 
   it('accepts fenced JSON analysis', () => {
@@ -238,7 +282,46 @@ describe('parseGeminiAnalysis', () => {
       reason: '',
       shouldFollowUp: false,
     });
+    expect(analysis.socialTone).toEqual(expectedDefaultSocialToneAnalysis);
     expect(analysis.overallConfidence).toBe('low');
+  });
+
+  it('falls back when social_tone is malformed', () => {
+    const analysis = parseGeminiAnalysis(
+      JSON.stringify({
+        social_tone: ['not an object'],
+        summary: 'Malformed tone payload.',
+      })
+    );
+
+    expect(analysis.socialTone).toEqual(expectedDefaultSocialToneAnalysis);
+  });
+
+  it('normalizes invalid social tone urgency to unclear', () => {
+    const analysis = parseGeminiAnalysis(
+      JSON.stringify({
+        social_tone: {
+          summary: 'Tone has some pressure.',
+          urgency_or_pressure: 'extreme',
+        },
+      })
+    );
+
+    expect(analysis.socialTone.urgencyOrPressure).toBe('unclear');
+  });
+
+  it('normalizes invalid social tone confidence to low', () => {
+    const analysis = parseGeminiAnalysis(
+      JSON.stringify({
+        social_tone: {
+          confidence: 'certain',
+          summary: 'Tone has limited evidence.',
+          urgency_or_pressure: 'low',
+        },
+      })
+    );
+
+    expect(analysis.socialTone.confidence).toBe('low');
   });
 
   it('drops parsed objects that lack required display text', () => {
@@ -338,6 +421,17 @@ describe('parseGeminiAnalysis', () => {
           reason: longText,
         },
         suggestedReplyPoints: [longText],
+        social_tone: {
+          apparent_tone: [longText],
+          cautions: [longText],
+          confidence: 'high',
+          evidence: longText,
+          possible_sender_state: longText,
+          relational_stance: longText,
+          social_signals: [longText],
+          summary: longText,
+          urgency_or_pressure: 'high',
+        },
         summary: longText,
         thingsToConsider: [
           {
@@ -356,6 +450,13 @@ describe('parseGeminiAnalysis', () => {
     expect(analysis.suggestedLabel?.name).toHaveLength(80);
     expect(analysis.suggestedLabel?.reason).toHaveLength(1000);
     expect(analysis.suggestedReplyPoints[0]).toHaveLength(1000);
+    expect(analysis.socialTone.summary).toHaveLength(1000);
+    expect(analysis.socialTone.apparentTone[0]).toHaveLength(1000);
+    expect(analysis.socialTone.socialSignals[0]).toHaveLength(1000);
+    expect(analysis.socialTone.possibleSenderState).toHaveLength(1000);
+    expect(analysis.socialTone.relationalStance).toHaveLength(1000);
+    expect(analysis.socialTone.evidence).toHaveLength(1000);
+    expect(analysis.socialTone.cautions[0]).toHaveLength(1000);
     expect(analysis.thingsToConsider[0]?.description).toHaveLength(1000);
   });
 });

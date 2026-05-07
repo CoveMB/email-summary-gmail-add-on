@@ -1,9 +1,11 @@
 import { CONFIG } from '../config/Config';
+import { getGeminiApiKeyStatus } from '../config/GeminiClient';
 import type {
   CleanThreadText,
   EmailAnalysis,
   ExplicitActionItem,
   FollowUpRecommendation,
+  SocialToneAnalysis,
   SuggestedCalendarEvent,
   SuggestedLabel,
   ThingToConsider,
@@ -26,12 +28,20 @@ const buildHeader = (subtitle: string): GoogleAppsScript.Card_Service.CardHeader
 const buildTextParagraph = (text: string): GoogleAppsScript.Card_Service.TextParagraph =>
   CardService.newTextParagraph().setText(text);
 
-const buildSummarizeThreadButtonSet = (): GoogleAppsScript.Card_Service.ButtonSet => {
+const buildThreadSummaryButtonSet = (
+  buttonText: string
+): GoogleAppsScript.Card_Service.ButtonSet => {
   const action = CardService.newAction().setFunctionName(summarizeThreadFunctionName);
-  const button = CardService.newTextButton().setText('Summarize thread').setOnClickAction(action);
+  const button = CardService.newTextButton().setText(buttonText).setOnClickAction(action);
 
   return CardService.newButtonSet().addButton(button);
 };
+
+const buildSummarizeThreadButtonSet = (): GoogleAppsScript.Card_Service.ButtonSet =>
+  buildThreadSummaryButtonSet('Summarize thread');
+
+const buildRefreshSummaryButtonSet = (): GoogleAppsScript.Card_Service.ButtonSet =>
+  buildThreadSummaryButtonSet('Refresh summary');
 
 const buildMetadataLine = (label: string, value: string): string =>
   `<b>${escapeCardText(label)}:</b> ${escapeCardText(value)}`;
@@ -48,26 +58,67 @@ const buildOptionalMetadataLines = (
     return value ? [buildMetadataLine(metadataLine.label, value)] : [];
   });
 
-const buildSection = (title: string, bodyLines: readonly string[]): string =>
-  [`<b>${escapeCardText(title)}</b>`, ...bodyLines].join('<br>');
+const buildAnalysisSection = (
+  title: string,
+  bodyLines: readonly string[]
+): GoogleAppsScript.Card_Service.CardSection =>
+  CardService.newCardSection()
+    .setHeader(title)
+    .addWidget(
+      buildTextParagraph(bodyLines.length > 0 ? bodyLines.join('<br>') : emptySectionText)
+    );
 
-const buildListSection = (title: string, items: readonly string[]): string =>
-  buildSection(
+const buildPlainTextSection = (bodyText: string): GoogleAppsScript.Card_Service.CardSection =>
+  CardService.newCardSection().addWidget(buildTextParagraph(escapeCardText(bodyText)));
+
+const buildButtonSection = (
+  buttonSet: GoogleAppsScript.Card_Service.ButtonSet
+): GoogleAppsScript.Card_Service.CardSection => CardService.newCardSection().addWidget(buttonSet);
+
+const buildPrivacyFooterSection = (): GoogleAppsScript.Card_Service.CardSection =>
+  CardService.newCardSection().addWidget(
+    buildTextParagraph(`<font color="#666666">${escapeCardText(getPrivacyNoticeText())}</font>`)
+  );
+
+const buildListSection = (
+  title: string,
+  items: readonly string[]
+): GoogleAppsScript.Card_Service.CardSection =>
+  buildAnalysisSection(
     title,
     items.length > 0 ? items.map((item) => `- ${escapeCardText(item)}`) : [emptySectionText]
   );
 
+const buildFormattedListSection = (
+  title: string,
+  items: readonly string[]
+): GoogleAppsScript.Card_Service.CardSection =>
+  buildAnalysisSection(title, items.length > 0 ? items : [emptySectionText]);
+
+const buildEvidenceLine = (sourceMessageIds: readonly string[] | undefined): string =>
+  sourceMessageIds && sourceMessageIds.length > 0
+    ? buildMetadataLine('Evidence', sourceMessageIds.join(', '))
+    : '';
+
 const formatActionItem = (actionItem: ExplicitActionItem): string =>
   [
-    actionItem.description,
-    `(owner: ${actionItem.owner}; confidence: ${actionItem.confidence})`,
-    actionItem.dueDateIso ? `due: ${actionItem.dueDateIso}` : '',
+    `- ${escapeCardText(actionItem.description)}`,
+    buildMetadataLine('Owner', actionItem.owner),
+    buildMetadataLine('Confidence', actionItem.confidence),
+    actionItem.dueDateIso ? buildMetadataLine('Due', actionItem.dueDateIso) : '',
+    buildEvidenceLine(actionItem.sourceMessageIds),
   ]
     .filter((part) => part.length > 0)
-    .join(' ');
+    .join('<br>');
 
 const formatThingToConsider = (thingToConsider: ThingToConsider): string =>
-  `${thingToConsider.description} (confidence: ${thingToConsider.confidence})`;
+  [
+    `- ${escapeCardText(thingToConsider.description)}`,
+    buildMetadataLine('Confidence', thingToConsider.confidence),
+    buildEvidenceLine(thingToConsider.sourceMessageIds),
+  ]
+    .filter((part) => part.length > 0)
+    .join('<br>');
 
 const formatCalendarSuggestion = (
   suggestedCalendarEvent: SuggestedCalendarEvent | undefined
@@ -115,70 +166,137 @@ const formatFollowUpRecommendation = (
     { label: 'Follow-up date', value: followUpRecommendation.followUpDateIso },
   ]);
 
-const buildTruncationSection = (cleanThread: CleanThreadText): string =>
+const buildJoinedMetadataLine = (
+  label: string,
+  values: readonly string[],
+  emptyText: string
+): string => buildMetadataLine(label, values.length > 0 ? values.join(', ') : emptyText);
+
+const formatSocialSignals = (socialSignals: readonly string[]): readonly string[] =>
+  socialSignals.length > 0
+    ? socialSignals.map((signal) => `- ${buildMetadataLine('Possible signal', signal)}`)
+    : [buildMetadataLine('Possible signal', 'Not enough evidence to identify a reliable signal.')];
+
+const formatCautions = (cautions: readonly string[]): readonly string[] =>
+  cautions.length > 0
+    ? cautions.map((caution) => `- ${buildMetadataLine('Caution', caution)}`)
+    : [
+        buildMetadataLine(
+          'Caution',
+          'Tone analysis is uncertain and should be reviewed cautiously.'
+        ),
+      ];
+
+const formatSocialToneAnalysis = (socialTone: SocialToneAnalysis): readonly string[] => [
+  buildMetadataLine('Summary', socialTone.summary),
+  buildJoinedMetadataLine('Apparent tone', socialTone.apparentTone, 'Unclear'),
+  ...formatSocialSignals(socialTone.socialSignals),
+  buildMetadataLine('May indicate', socialTone.possibleSenderState ?? 'Not enough evidence.'),
+  buildMetadataLine('Relational stance', socialTone.relationalStance ?? 'Unclear'),
+  buildMetadataLine('Urgency/pressure', socialTone.urgencyOrPressure),
+  buildMetadataLine('Evidence', socialTone.evidence || 'No specific evidence available.'),
+  buildMetadataLine('Confidence', socialTone.confidence),
+  ...formatCautions(socialTone.cautions),
+];
+
+const buildTruncationSection = (
+  cleanThread: CleanThreadText
+): GoogleAppsScript.Card_Service.CardSection | undefined =>
   cleanThread.wasTruncated
-    ? buildSection('Truncation notice', [
+    ? buildAnalysisSection('Truncation notice', [
         'Cleaned thread text was truncated before mock AI analysis. Review output with this limitation in mind.',
       ])
-    : '';
+    : undefined;
 
-const buildBaseCard = (subtitle: string, bodyText: string): GoogleAppsScript.Card_Service.Card => {
-  const section = CardService.newCardSection()
-    .addWidget(buildTextParagraph(bodyText))
-    .addWidget(buildTextParagraph(getPrivacyNoticeText()));
+const buildCard = (
+  subtitle: string,
+  sections: readonly GoogleAppsScript.Card_Service.CardSection[]
+): GoogleAppsScript.Card_Service.Card => {
+  const cardBuilder = CardService.newCardBuilder().setHeader(buildHeader(subtitle));
+  sections.forEach((section) => cardBuilder.addSection(section));
 
-  return CardService.newCardBuilder().setHeader(buildHeader(subtitle)).addSection(section).build();
+  return cardBuilder.build();
 };
 
+const formatGeminiMode = (): string => (CONFIG.USE_MOCK_GEMINI ? 'Mock' : 'Real');
+
+const formatGeminiApiKeyStatus = (): string =>
+  getGeminiApiKeyStatus() === 'configured' ? 'Configured' : 'Missing';
+
+const buildHomeConfigurationSection = (): GoogleAppsScript.Card_Service.CardSection =>
+  buildAnalysisSection('Configuration status', [
+    buildMetadataLine('Gemini mode', formatGeminiMode()),
+    buildMetadataLine('API key status', formatGeminiApiKeyStatus()),
+  ]);
+
 export const buildHomeCard = (): GoogleAppsScript.Card_Service.Card =>
-  buildBaseCard('Personal Gmail thread brief assistant', 'Open a Gmail thread to use ThreadBrief.');
+  buildCard('Personal Gmail thread brief assistant', [
+    buildPlainTextSection('Open a Gmail thread to use EmailSummary.'),
+    buildHomeConfigurationSection(),
+    buildPrivacyFooterSection(),
+  ]);
+
+const buildGmailSummaryEntrySection = (): GoogleAppsScript.Card_Service.CardSection =>
+  CardService.newCardSection()
+    .addWidget(
+      buildTextParagraph(
+        'Mock summarization is available. It reads the currently opened thread after you click the button, cleans it in memory, sends it to the mock Gemini client, and displays parsed results.'
+      )
+    )
+    .addWidget(buildTextParagraph('No real Gemini API call is made in mock mode.'))
+    .addWidget(buildSummarizeThreadButtonSet());
 
 export const buildGmailSummaryEntryCard = (): GoogleAppsScript.Card_Service.Card =>
-  CardService.newCardBuilder()
-    .setHeader(buildHeader('Gmail thread context'))
-    .addSection(
-      CardService.newCardSection()
-        .addWidget(
-          buildTextParagraph(
-            'Mock summarization is available. It reads the currently opened thread after you click the button, cleans it in memory, sends it to the mock Gemini client, and displays parsed results.'
-          )
-        )
-        .addWidget(buildTextParagraph('No real Gemini API call is made in mock mode.'))
-        .addWidget(buildSummarizeThreadButtonSet())
-        .addWidget(buildTextParagraph(getPrivacyNoticeText()))
-    )
-    .build();
+  buildCard('Gmail thread context', [buildGmailSummaryEntrySection(), buildPrivacyFooterSection()]);
 
-const buildThreadAnalysisBodyText = (
+const buildThreadAnalysisSections = (
   analysis: EmailAnalysis,
   cleanThread: CleanThreadText
-): string =>
+): readonly GoogleAppsScript.Card_Service.CardSection[] =>
   [
-    buildSection('Summary', [escapeCardText(analysis.summary || '(No summary returned.)')]),
-    buildListSection('Explicit action items', analysis.explicitActionItems.map(formatActionItem)),
-    buildListSection('Things to consider', analysis.thingsToConsider.map(formatThingToConsider)),
+    buildAnalysisSection('Summary', [
+      escapeCardText(analysis.summary || '(No summary returned.)'),
+      buildMetadataLine('Confidence', analysis.overallConfidence),
+    ]),
+    buildAnalysisSection('Social tone', formatSocialToneAnalysis(analysis.socialTone)),
+    buildFormattedListSection(
+      'Explicit action items',
+      analysis.explicitActionItems.map(formatActionItem)
+    ),
+    buildFormattedListSection(
+      'Things to consider / think about',
+      analysis.thingsToConsider.map(formatThingToConsider)
+    ),
     buildListSection('Suggested reply points', analysis.suggestedReplyPoints),
-    buildSection(
+    buildAnalysisSection(
       'Suggested calendar event',
       formatCalendarSuggestion(analysis.suggestedCalendarEvent)
     ),
-    buildSection('Suggested label', formatLabelSuggestion(analysis.suggestedLabel)),
-    buildSection(
-      'Follow-up recommendation',
+    buildAnalysisSection('Suggested label', formatLabelSuggestion(analysis.suggestedLabel)),
+    buildAnalysisSection(
+      'Follow-up',
       formatFollowUpRecommendation(analysis.followUpRecommendation)
     ),
     buildListSection('Risks / ambiguities', analysis.risksAndAmbiguities),
     buildTruncationSection(cleanThread),
-  ]
-    .filter((section) => section.length > 0)
-    .join('<br><br>');
+    buildButtonSection(buildRefreshSummaryButtonSet()),
+    buildPrivacyFooterSection(),
+  ].filter(
+    (section): section is GoogleAppsScript.Card_Service.CardSection => section !== undefined
+  );
 
 export const buildThreadAnalysisDisplayCard = (
   analysis: EmailAnalysis,
   cleanThread: CleanThreadText
 ): GoogleAppsScript.Card_Service.Card =>
-  buildBaseCard('Mock thread summary', buildThreadAnalysisBodyText(analysis, cleanThread));
+  buildCard('Mock thread summary', buildThreadAnalysisSections(analysis, cleanThread));
 
-export const buildThreadSummaryErrorCard = (
-  errorMessage: string
-): GoogleAppsScript.Card_Service.Card => buildBaseCard('Mock thread summary', errorMessage);
+export const buildErrorCard = (
+  title: string,
+  message: string
+): GoogleAppsScript.Card_Service.Card =>
+  buildCard(title, [
+    buildPlainTextSection(message),
+    buildButtonSection(buildRefreshSummaryButtonSet()),
+    buildPrivacyFooterSection(),
+  ]);

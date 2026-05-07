@@ -4,9 +4,11 @@ import type {
   EmailAnalysis,
   ExplicitActionItem,
   FollowUpRecommendation,
+  SocialToneAnalysis,
   SuggestedCalendarEvent,
   SuggestedLabel,
   ThingToConsider,
+  UrgencyOrPressure,
 } from '../types/types';
 import { readAnalysisField } from './AnalysisSchema';
 
@@ -16,6 +18,8 @@ const safeReasonMaximumLength = 500;
 const analysisTextMaximumLength = 1000;
 const labelNameMaximumLength = 80;
 const sourceMessageIdMaximumLength = 200;
+const defaultSocialToneSummary = 'No reliable social-tone analysis available.';
+const defaultSocialToneCaution = 'Tone analysis is uncertain and should be reviewed cautiously.';
 
 type UnknownRecord = Readonly<Record<string, unknown>>;
 type NormalizedDescribedItemBase = Readonly<{
@@ -33,11 +37,37 @@ const createEmptyFollowUpRecommendation = (): FollowUpRecommendation => ({
   shouldFollowUp: false,
 });
 
+const createDefaultSocialToneAnalysis = (): SocialToneAnalysis => ({
+  apparentTone: [],
+  cautions: [defaultSocialToneCaution],
+  confidence: 'low',
+  evidence: '',
+  possibleSenderState: null,
+  relationalStance: null,
+  socialSignals: [],
+  summary: defaultSocialToneSummary,
+  urgencyOrPressure: 'unclear',
+});
+
 const normalizeActionOwner = (value: unknown): ActionOwner => {
   if (
     value === 'recipient' ||
     value === 'sender' ||
     value === 'third_party' ||
+    value === 'unclear'
+  ) {
+    return value;
+  }
+
+  return 'unclear';
+};
+
+const normalizeUrgencyOrPressure = (value: unknown): UrgencyOrPressure => {
+  if (
+    value === 'none' ||
+    value === 'low' ||
+    value === 'medium' ||
+    value === 'high' ||
     value === 'unclear'
   ) {
     return value;
@@ -52,6 +82,12 @@ const normalizeStringArray = (value: unknown, maxLength: number): readonly strin
   }
 
   return value.map((item) => safeText(item, maxLength)).filter((item) => item.length > 0);
+};
+
+const normalizeNullableText = (value: unknown, maxLength: number): string | null => {
+  const text = safeText(value, maxLength);
+
+  return text.length > 0 ? text : null;
 };
 
 const normalizeDescribedItemBase = (value: UnknownRecord): NormalizedDescribedItemBase | null => {
@@ -162,6 +198,46 @@ const normalizeFollowUpRecommendation = (value: unknown): FollowUpRecommendation
   };
 };
 
+const normalizeSocialToneAnalysis = (value: unknown): SocialToneAnalysis => {
+  if (!isRecord(value)) {
+    return createDefaultSocialToneAnalysis();
+  }
+
+  const summary = safeText(
+    readAnalysisField(value, 'socialToneSummary'),
+    analysisTextMaximumLength
+  );
+
+  return {
+    apparentTone: normalizeStringArray(
+      readAnalysisField(value, 'socialToneApparentTone'),
+      analysisTextMaximumLength
+    ),
+    cautions: normalizeStringArray(
+      readAnalysisField(value, 'socialToneCautions'),
+      analysisTextMaximumLength
+    ),
+    confidence: normalizeConfidence(value.confidence),
+    evidence: safeText(readAnalysisField(value, 'socialToneEvidence'), analysisTextMaximumLength),
+    possibleSenderState: normalizeNullableText(
+      readAnalysisField(value, 'socialTonePossibleSenderState'),
+      analysisTextMaximumLength
+    ),
+    relationalStance: normalizeNullableText(
+      readAnalysisField(value, 'socialToneRelationalStance'),
+      analysisTextMaximumLength
+    ),
+    socialSignals: normalizeStringArray(
+      readAnalysisField(value, 'socialToneSocialSignals'),
+      analysisTextMaximumLength
+    ),
+    summary: summary || defaultSocialToneSummary,
+    urgencyOrPressure: normalizeUrgencyOrPressure(
+      readAnalysisField(value, 'socialToneUrgencyOrPressure')
+    ),
+  };
+};
+
 const normalizeObjectArray = <NormalizedItem>(
   value: unknown,
   normalizeItem: (value: unknown) => NormalizedItem | null
@@ -204,6 +280,7 @@ const normalizeEmailAnalysis = (value: unknown): EmailAnalysis => {
       readAnalysisField(value, 'suggestedReplyPoints'),
       analysisTextMaximumLength
     ),
+    socialTone: normalizeSocialToneAnalysis(readAnalysisField(value, 'socialTone')),
     summary: safeText(value.summary, analysisTextMaximumLength),
     thingsToConsider: normalizeObjectArray(
       readAnalysisField(value, 'thingsToConsider'),
@@ -252,6 +329,7 @@ export const createEmptyEmailAnalysis = (): EmailAnalysis => ({
   overallConfidence: 'low',
   risksAndAmbiguities: [],
   suggestedReplyPoints: [],
+  socialTone: createDefaultSocialToneAnalysis(),
   summary: '',
   thingsToConsider: [],
 });
