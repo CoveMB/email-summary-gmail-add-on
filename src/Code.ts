@@ -3,9 +3,9 @@ import {
   buildPlaceholderGmailCard,
   buildThreadMetadataDisplayCard,
   buildThreadMetadataErrorCard,
-} from './Cards';
-import { getCurrentThreadData } from './GmailReader';
-import type { AddonEvent } from './types';
+} from './domain/Cards';
+import { getCurrentThreadData } from './domain/GmailReader';
+import type { AddonEvent } from './types/types';
 
 const fallbackThreadMetadataErrorMessage = 'Thread metadata could not be read.';
 

@@ -21,10 +21,33 @@ export type AddonEvent = Readonly<{
   [fieldName: string]: unknown;
 }>;
 
+export type ThreadMessage = Readonly<{
+  dateIso: string;
+  from: string;
+  plainBody: string;
+  subject: string;
+  to: string;
+}>;
+
 export type ThreadData = Readonly<{
+  latestBodyPreview: string;
   latestDateIso: string;
   latestSender: string;
+  messages: readonly ThreadMessage[];
   messageCount: number;
+  openedMessageId: string;
   subject: string;
   threadId: string;
+}>;
+
+export type CleanThreadText = Readonly<{
+  includedMessageCount: number;
+  originalMessageCount: number;
+  text: string;
+  wasTruncated: boolean;
+}>;
+
+export type CleanThreadTextOptions = Readonly<{
+  maxChars?: number;
+  maxMessages?: number;
 }>;

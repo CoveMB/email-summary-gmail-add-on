@@ -20,6 +20,8 @@
 
 - Verify only the currently opened Gmail thread is read.
 - Verify email content is processed only after user action.
+- Verify thread cleaning removes common quoted replies and signatures without deleting new content.
+- Verify cleaned thread text respects configured message and character limits.
 - Verify no raw email body logging occurs.
 - Verify Gemini failures show a safe user-facing error.
 - Verify AI output is clearly reviewable before user action.
@@ -34,5 +36,7 @@
 6. Open the EmailSummary add-on.
 7. Click `Read thread metadata`.
 8. Confirm the card displays subject, message count, latest sender, and latest date.
-9. Confirm no email body text is displayed.
-10. Confirm OAuth scopes include only current-message readonly Gmail access plus add-on execution.
+9. Confirm the card displays `Debug body preview`.
+10. Confirm the preview is at most 300 characters.
+11. Confirm no full email body is displayed.
+12. Confirm OAuth scopes include only current-message readonly Gmail access plus add-on execution.

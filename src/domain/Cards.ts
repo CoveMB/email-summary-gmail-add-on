@@ -1,6 +1,7 @@
-import { CONFIG } from './Config';
+import { CONFIG } from '../config/Config';
+import type { ThreadData } from '../types/types';
+import { escapeCardText } from '../utils/CardUtils';
 import { getPrivacyNoticeText } from './PrivacyNotice';
-import type { ThreadData } from './types';
 
 const readThreadMetadataFunctionName = 'buildThreadMetadataCard';
 
@@ -9,14 +10,6 @@ const buildHeader = (subtitle: string): GoogleAppsScript.Card_Service.CardHeader
 
 const buildTextParagraph = (text: string): GoogleAppsScript.Card_Service.TextParagraph =>
   CardService.newTextParagraph().setText(text);
-
-const escapeCardText = (text: string): string =>
-  text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
 
 const buildReadThreadMetadataButtonSet = (): GoogleAppsScript.Card_Service.ButtonSet => {
   const action = CardService.newAction().setFunctionName(readThreadMetadataFunctionName);
@@ -51,10 +44,10 @@ export const buildPlaceholderGmailCard = (): GoogleAppsScript.Card_Service.Card 
       CardService.newCardSection()
         .addWidget(
           buildTextParagraph(
-            'Summarization is not implemented yet. This card can read thread metadata only.'
+            'Summarization is not implemented yet. This card reads thread metadata and a short debug body preview only.'
           )
         )
-        .addWidget(buildTextParagraph('Email body text is not read or displayed.'))
+        .addWidget(buildTextParagraph('Debug preview is limited to 300 characters.'))
         .addWidget(buildReadThreadMetadataButtonSet())
         .addWidget(buildTextParagraph(getPrivacyNoticeText()))
     )
@@ -70,6 +63,10 @@ export const buildThreadMetadataDisplayCard = (
       buildMetadataLine('Message count', String(threadData.messageCount)),
       buildMetadataLine('Latest sender', threadData.latestSender),
       buildMetadataLine('Latest date', threadData.latestDateIso),
+      buildMetadataLine(
+        'Debug body preview',
+        threadData.latestBodyPreview.length > 0 ? threadData.latestBodyPreview : '(empty)'
+      ),
     ].join('<br>')
   );
 

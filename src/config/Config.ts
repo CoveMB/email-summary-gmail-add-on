@@ -1,4 +1,4 @@
-import type { AppConfig } from './types';
+import type { AppConfig } from '../types/types';
 
 export const CONFIG: AppConfig = Object.freeze({
   APP_NAME: 'EmailSummary',
@@ -7,5 +7,3 @@ export const CONFIG: AppConfig = Object.freeze({
   MAX_THREAD_CHARS: 50000,
   USE_MOCK_GEMINI: true,
 });
-
-export const GeminiApiKey = PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY');

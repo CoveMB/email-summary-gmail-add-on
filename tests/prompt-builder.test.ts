@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildPlaceholderPrompt } from '../src/PromptBuilder';
+import { buildPlaceholderPrompt } from '../src/domain/PromptBuilder';
 
 describe('buildPlaceholderPrompt', () => {
   it('returns static placeholder prompt metadata', () => {

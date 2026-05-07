@@ -20,30 +20,34 @@ The architecture is personal-use ready while keeping a Marketplace-ready path: l
 
 GitHub is the source of truth. TypeScript source lives in `src/`. Rollup bundles the Apps Script runtime output into `dist/`, and clasp should later push `dist/` to Apps Script.
 
-`dist/` is generated and gitignored to keep source review clean and avoid committing build artifacts. Run `npm run build` before any clasp push.
+`dist/` is generated and gitignored to keep source review clean and avoid committing build artifacts. Run `pnpm run build` before any clasp push.
 
 ## Local Setup
 
 ```sh
-npm install
+pnpm install
 ```
 
 ## Development Commands
 
 ```sh
-npm run format
-npm run format:check
-npm run lint
-npm run lint:fix
-npm run test
-npm run build
-npm run check
+pnpm run format
+pnpm run format:check
+pnpm run lint
+pnpm run lint:fix
+pnpm run test
+pnpm run build
+pnpm run check
 ```
+
+## Continuous Integration
+
+GitHub Actions runs `pnpm install --frozen-lockfile` and `pnpm run check` on pushes and pull requests. The CI workflow validates formatting, linting, tests, and build output only. It does not deploy, run `clasp push`, or require secrets.
 
 ## Apps Script Build
 
 ```sh
-npm run build
+pnpm run build
 ```
 
 The build command creates:
@@ -69,9 +73,22 @@ Do not commit `.clasprc.json`. It contains local clasp authentication state.
 After clasp setup:
 
 ```sh
-npm run clasp:push
-npm run clasp:open
+pnpm run clasp:push
+pnpm run clasp:open
 ```
+
+## Future clasp Deploy Or Update Plan
+
+Deployment automation should stay separate from CI and should be added only when explicitly needed. Required work:
+
+- Keep `pnpm-lock.yaml` committed and require frozen-lockfile installs.
+- Decide whether automation should run on manual dispatch only or on tagged releases.
+- Store clasp credentials and the Apps Script script ID as GitHub secrets.
+- Generate `.clasp.json` during the workflow with `rootDir` set to `dist/`.
+- Run `pnpm install --frozen-lockfile`, `pnpm run check`, and then `pnpm run clasp:push`.
+- Add a dry-run or staging script target if production and test Apps Script projects are both used.
+- Document which secrets are required, who can rotate them, and how deployment is reviewed.
+- Keep deployment workflows from running on untrusted pull requests.
 
 ## Security And Privacy
 
