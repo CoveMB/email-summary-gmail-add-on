@@ -54,11 +54,14 @@ export type CleanThreadTextOptions = Readonly<{
   maxMessages?: number;
 }>;
 
-export type Confidence = 'high' | 'medium' | 'low';
+export const confidenceValues = ['high', 'medium', 'low'] as const;
+export type Confidence = (typeof confidenceValues)[number];
 
-export type ActionOwner = 'recipient' | 'sender' | 'third_party' | 'unclear';
+export const actionOwnerValues = ['recipient', 'sender', 'third_party', 'unclear'] as const;
+export type ActionOwner = (typeof actionOwnerValues)[number];
 
-export type UrgencyOrPressure = 'none' | 'low' | 'medium' | 'high' | 'unclear';
+export const urgencyOrPressureValues = ['none', 'low', 'medium', 'high', 'unclear'] as const;
+export type UrgencyOrPressure = (typeof urgencyOrPressureValues)[number];
 
 export type ExplicitActionItem = Readonly<{
   description: string;
@@ -124,6 +127,8 @@ export type EmailAnalysis = Readonly<{
 export type ThreadSummaryErrorKind =
   | 'no_gmail_context'
   | 'gmail_read_failure'
+  | 'gemini_missing_key'
+  | 'gemini_request_failure'
   | 'parse_failure'
   | 'unexpected_failure';
 

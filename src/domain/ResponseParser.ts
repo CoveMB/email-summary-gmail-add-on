@@ -1,16 +1,20 @@
-import type {
-  ActionOwner,
-  Confidence,
-  EmailAnalysis,
-  ExplicitActionItem,
-  FollowUpRecommendation,
-  SocialToneAnalysis,
-  SuggestedCalendarEvent,
-  SuggestedLabel,
-  ThingToConsider,
-  UrgencyOrPressure,
+import {
+  actionOwnerValues,
+  confidenceValues,
+  urgencyOrPressureValues,
+  type ActionOwner,
+  type Confidence,
+  type EmailAnalysis,
+  type ExplicitActionItem,
+  type FollowUpRecommendation,
+  type SocialToneAnalysis,
+  type SuggestedCalendarEvent,
+  type SuggestedLabel,
+  type ThingToConsider,
+  type UrgencyOrPressure,
 } from '../types/types';
-import { readAnalysisField } from './AnalysisSchema';
+import { readAnalysisField, type AnalysisFieldName } from './AnalysisSchema';
+import { createDefaultSocialToneAnalysis, defaultSocialToneSummary } from './SocialToneDefaults';
 
 const parseFailureSummary = 'Analysis could not be parsed.';
 const parseFailureFallbackReason = 'Parser returned fallback analysis.';
@@ -18,8 +22,16 @@ const safeReasonMaximumLength = 500;
 const analysisTextMaximumLength = 1000;
 const labelNameMaximumLength = 80;
 const sourceMessageIdMaximumLength = 200;
-const defaultSocialToneSummary = 'No reliable social-tone analysis available.';
-const defaultSocialToneCaution = 'Tone analysis is uncertain and should be reviewed cautiously.';
+const unsafeSocialToneTerms = [
+  'anxious',
+  'manipulative',
+  'narcissistic',
+  'narcissist',
+  'depressed',
+  'depression',
+  'mentally ill',
+  'psychotic',
+] as const;
 
 type UnknownRecord = Readonly<Record<string, unknown>>;
 type NormalizedDescribedItemBase = Readonly<{
@@ -37,25 +49,13 @@ const createEmptyFollowUpRecommendation = (): FollowUpRecommendation => ({
   shouldFollowUp: false,
 });
 
-const createDefaultSocialToneAnalysis = (): SocialToneAnalysis => ({
-  apparentTone: [],
-  cautions: [defaultSocialToneCaution],
-  confidence: 'low',
-  evidence: '',
-  possibleSenderState: null,
-  relationalStance: null,
-  socialSignals: [],
-  summary: defaultSocialToneSummary,
-  urgencyOrPressure: 'unclear',
-});
+const isAllowedStringValue = <AllowedValue extends string>(
+  allowedValues: readonly AllowedValue[],
+  value: string
+): value is AllowedValue => (allowedValues as readonly string[]).includes(value);
 
 const normalizeActionOwner = (value: unknown): ActionOwner => {
-  if (
-    value === 'recipient' ||
-    value === 'sender' ||
-    value === 'third_party' ||
-    value === 'unclear'
-  ) {
+  if (typeof value === 'string' && isAllowedStringValue(actionOwnerValues, value)) {
     return value;
   }
 
@@ -63,13 +63,7 @@ const normalizeActionOwner = (value: unknown): ActionOwner => {
 };
 
 const normalizeUrgencyOrPressure = (value: unknown): UrgencyOrPressure => {
-  if (
-    value === 'none' ||
-    value === 'low' ||
-    value === 'medium' ||
-    value === 'high' ||
-    value === 'unclear'
-  ) {
+  if (typeof value === 'string' && isAllowedStringValue(urgencyOrPressureValues, value)) {
     return value;
   }
 
@@ -90,9 +84,45 @@ const normalizeNullableText = (value: unknown, maxLength: number): string | null
   return text.length > 0 ? text : null;
 };
 
+const readSafeTextField = (
+  record: UnknownRecord,
+  fieldName: AnalysisFieldName,
+  maxLength = analysisTextMaximumLength
+): string => safeText(readAnalysisField(record, fieldName), maxLength);
+
+const readNullableTextField = (
+  record: UnknownRecord,
+  fieldName: AnalysisFieldName,
+  maxLength = analysisTextMaximumLength
+): string | null => normalizeNullableText(readAnalysisField(record, fieldName), maxLength);
+
+const readStringArrayField = (
+  record: UnknownRecord,
+  fieldName: AnalysisFieldName,
+  maxLength = analysisTextMaximumLength
+): readonly string[] => normalizeStringArray(readAnalysisField(record, fieldName), maxLength);
+
+const hasUnsafeSocialToneText = (text: string): boolean => {
+  const normalizedText = text.toLowerCase();
+
+  return unsafeSocialToneTerms.some((unsafeTerm) => normalizedText.includes(unsafeTerm));
+};
+
+const hasUnsafeSocialToneAnalysis = (socialTone: SocialToneAnalysis): boolean =>
+  [
+    socialTone.summary,
+    socialTone.possibleSenderState ?? '',
+    socialTone.relationalStance ?? '',
+    socialTone.evidence,
+    ...socialTone.apparentTone,
+    ...socialTone.socialSignals,
+    ...socialTone.cautions,
+  ].some(hasUnsafeSocialToneText);
+
 const normalizeDescribedItemBase = (value: UnknownRecord): NormalizedDescribedItemBase | null => {
-  const sourceMessageIds = normalizeStringArray(
-    readAnalysisField(value, 'sourceMessageIds'),
+  const sourceMessageIds = readStringArrayField(
+    value,
+    'sourceMessageIds',
     sourceMessageIdMaximumLength
   );
   const description = safeText(value.description, analysisTextMaximumLength);
@@ -119,7 +149,7 @@ const normalizeExplicitActionItem = (value: unknown): ExplicitActionItem | null 
     return null;
   }
 
-  const dueDateIso = safeText(readAnalysisField(value, 'dueDateIso'), analysisTextMaximumLength);
+  const dueDateIso = readSafeTextField(value, 'dueDateIso');
 
   return {
     ...baseItem,
@@ -137,15 +167,9 @@ const normalizeSuggestedCalendarEvent = (value: unknown): SuggestedCalendarEvent
   }
 
   const description = safeText(value.description, analysisTextMaximumLength);
-  const endDateTimeIso = safeText(
-    readAnalysisField(value, 'endDateTimeIso'),
-    analysisTextMaximumLength
-  );
+  const endDateTimeIso = readSafeTextField(value, 'endDateTimeIso');
   const location = safeText(value.location, analysisTextMaximumLength);
-  const startDateTimeIso = safeText(
-    readAnalysisField(value, 'startDateTimeIso'),
-    analysisTextMaximumLength
-  );
+  const startDateTimeIso = readSafeTextField(value, 'startDateTimeIso');
   const title = safeText(value.title, analysisTextMaximumLength);
 
   if (title.length === 0) {
@@ -185,10 +209,7 @@ const normalizeFollowUpRecommendation = (value: unknown): FollowUpRecommendation
     return createEmptyFollowUpRecommendation();
   }
 
-  const followUpDateIso = safeText(
-    readAnalysisField(value, 'followUpDateIso'),
-    analysisTextMaximumLength
-  );
+  const followUpDateIso = readSafeTextField(value, 'followUpDateIso');
 
   return {
     confidence: normalizeConfidence(value.confidence),
@@ -203,39 +224,25 @@ const normalizeSocialToneAnalysis = (value: unknown): SocialToneAnalysis => {
     return createDefaultSocialToneAnalysis();
   }
 
-  const summary = safeText(
-    readAnalysisField(value, 'socialToneSummary'),
-    analysisTextMaximumLength
-  );
+  const summary = readSafeTextField(value, 'socialToneSummary');
 
-  return {
-    apparentTone: normalizeStringArray(
-      readAnalysisField(value, 'socialToneApparentTone'),
-      analysisTextMaximumLength
-    ),
-    cautions: normalizeStringArray(
-      readAnalysisField(value, 'socialToneCautions'),
-      analysisTextMaximumLength
-    ),
+  const normalizedSocialTone: SocialToneAnalysis = {
+    apparentTone: readStringArrayField(value, 'socialToneApparentTone'),
+    cautions: readStringArrayField(value, 'socialToneCautions'),
     confidence: normalizeConfidence(value.confidence),
-    evidence: safeText(readAnalysisField(value, 'socialToneEvidence'), analysisTextMaximumLength),
-    possibleSenderState: normalizeNullableText(
-      readAnalysisField(value, 'socialTonePossibleSenderState'),
-      analysisTextMaximumLength
-    ),
-    relationalStance: normalizeNullableText(
-      readAnalysisField(value, 'socialToneRelationalStance'),
-      analysisTextMaximumLength
-    ),
-    socialSignals: normalizeStringArray(
-      readAnalysisField(value, 'socialToneSocialSignals'),
-      analysisTextMaximumLength
-    ),
+    evidence: readSafeTextField(value, 'socialToneEvidence'),
+    possibleSenderState: readNullableTextField(value, 'socialTonePossibleSenderState'),
+    relationalStance: readNullableTextField(value, 'socialToneRelationalStance'),
+    socialSignals: readStringArrayField(value, 'socialToneSocialSignals'),
     summary: summary || defaultSocialToneSummary,
     urgencyOrPressure: normalizeUrgencyOrPressure(
       readAnalysisField(value, 'socialToneUrgencyOrPressure')
     ),
   };
+
+  return hasUnsafeSocialToneAnalysis(normalizedSocialTone)
+    ? createDefaultSocialToneAnalysis()
+    : normalizedSocialTone;
 };
 
 const normalizeObjectArray = <NormalizedItem>(
@@ -298,7 +305,7 @@ export const normalizeConfidence = (value: unknown): Confidence => {
 
   const normalizedValue = value.trim().toLowerCase();
 
-  if (normalizedValue === 'high' || normalizedValue === 'medium' || normalizedValue === 'low') {
+  if (isAllowedStringValue(confidenceValues, normalizedValue)) {
     return normalizedValue;
   }
 

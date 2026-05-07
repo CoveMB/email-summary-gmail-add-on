@@ -5,10 +5,16 @@ import { CONFIG, GEMINI_API_KEY_PROPERTY_NAME } from './Config';
 const geminiGenerateContentEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(CONFIG.GEMINI_MODEL)}:generateContent`;
 const missingGeminiApiKeyMessage = 'Gemini API key is missing.';
 const geminiRequestFailedMessage = 'Gemini API request failed.';
-const geminiInvalidResponseMessage = 'Gemini API response could not be read.';
 
 type UnknownRecord = Readonly<Record<string, unknown>>;
-type ErrorWithCause = Error & Readonly<{ cause: unknown }>;
+export type GeminiClientErrorKind = 'missing_key' | 'request_failed';
+
+export class GeminiClientError extends Error {
+  public constructor(public readonly kind: GeminiClientErrorKind) {
+    super(kind === 'missing_key' ? missingGeminiApiKeyMessage : geminiRequestFailedMessage);
+    this.name = 'GeminiClientError';
+  }
+}
 
 const mockGeminiAnalysisResponse = {
   [analysisFieldNames.explicitActionItems.external]: [
@@ -41,6 +47,24 @@ const mockGeminiAnalysisResponse = {
   [analysisFieldNames.suggestedReplyPoints.external]: [
     'Confirm Gemini integration remains disabled until credentials and scopes are configured.',
   ],
+  [analysisFieldNames.socialTone.external]: {
+    [analysisFieldNames.socialToneApparentTone.external]: ['neutral', 'practical', 'low-pressure'],
+    cautions: [
+      'Tone is inferred from text only.',
+      "The sender's actual emotional state cannot be determined from the email alone.",
+    ],
+    confidence: 'medium',
+    evidence:
+      'The mock response uses setup-focused wording and does not include personal or emotional content.',
+    [analysisFieldNames.socialTonePossibleSenderState.external]:
+      'The message may come across as a routine setup reminder, but this is mock data.',
+    [analysisFieldNames.socialToneRelationalStance.external]: 'neutral and task-oriented',
+    [analysisFieldNames.socialToneSocialSignals.external]: [
+      'Possible signal: the wording is direct but not demanding.',
+    ],
+    summary: 'The mock message may come across as neutral, practical, and low-pressure.',
+    [analysisFieldNames.socialToneUrgencyOrPressure.external]: 'low',
+  },
   summary: 'EmailSummary mock analysis response. No Gemini API call was made.',
   [analysisFieldNames.thingsToConsider.external]: [
     {
@@ -55,8 +79,8 @@ const mockGeminiAnalysisResponse = {
 const isRecord = (value: unknown): value is UnknownRecord =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
-const buildSafeError = (message: string, cause: unknown): ErrorWithCause =>
-  Object.assign(new Error(message), { cause });
+const buildGeminiClientError = (kind: GeminiClientErrorKind, cause: unknown): GeminiClientError =>
+  Object.assign(new GeminiClientError(kind), { cause });
 
 const readGeminiApiKey = (): string => getEnvironmentVariable(GEMINI_API_KEY_PROPERTY_NAME);
 
@@ -70,7 +94,7 @@ const getRequiredGeminiApiKey = (): string => {
   const apiKey = readGeminiApiKey();
 
   if (apiKey.length === 0) {
-    throw new Error(missingGeminiApiKeyMessage);
+    throw new GeminiClientError('missing_key');
   }
 
   return apiKey;
@@ -106,7 +130,7 @@ const fetchGeminiGenerateContent = (
       payload: buildGeminiRequestPayload(prompt),
     });
   } catch (error: unknown) {
-    throw buildSafeError(geminiRequestFailedMessage, error);
+    throw buildGeminiClientError('request_failed', error);
   }
 };
 
@@ -121,7 +145,7 @@ const parseJsonObject = (rawJson: string): UnknownRecord => {
     // Fall through to the fixed safe error below.
   }
 
-  throw new Error(geminiInvalidResponseMessage);
+  throw new GeminiClientError('request_failed');
 };
 
 const readRecordArray = (record: UnknownRecord, fieldName: string): readonly UnknownRecord[] => {
@@ -147,7 +171,7 @@ const extractGeminiModelText = (responseBody: string): string => {
     return text;
   }
 
-  throw new Error(geminiInvalidResponseMessage);
+  throw new GeminiClientError('request_failed');
 };
 
 const analyzeThreadWithRealGemini = (prompt: string): string => {
@@ -156,7 +180,7 @@ const analyzeThreadWithRealGemini = (prompt: string): string => {
   const responseCode = response.getResponseCode();
 
   if (responseCode < 200 || responseCode >= 300) {
-    throw new Error(geminiRequestFailedMessage);
+    throw new GeminiClientError('request_failed');
   }
 
   return extractGeminiModelText(response.getContentText());

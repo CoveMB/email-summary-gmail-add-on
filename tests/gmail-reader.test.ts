@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { getCurrentThreadData, truncateForPreview } from '../src/domain/GmailReader';
+import {
+  getCurrentThreadData,
+  missingGmailContextMessage,
+  truncateForPreview,
+} from '../src/domain/GmailReader';
 import {
   buildAddonEventWithGmailContext,
   buildAddonEventWithMessageId,
@@ -9,9 +13,6 @@ import {
   installGmailAppMock,
   uninstallGmailAppMock,
 } from './helpers/gmail-test-helpers';
-
-const missingGmailContextMessage =
-  'This add-on needs an opened Gmail thread before it can summarize.';
 
 afterEach(() => {
   uninstallGmailAppMock();

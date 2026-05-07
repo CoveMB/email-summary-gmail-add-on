@@ -8,16 +8,20 @@ import {
   safeText,
   stripMarkdownCodeFences,
 } from '../src/domain/ResponseParser';
+import {
+  defaultSocialToneCaution,
+  defaultSocialToneSummary,
+} from '../src/domain/SocialToneDefaults';
 
 const expectedDefaultSocialToneAnalysis = {
   apparentTone: [],
-  cautions: ['Tone analysis is uncertain and should be reviewed cautiously.'],
+  cautions: [defaultSocialToneCaution],
   confidence: 'low',
   evidence: '',
   possibleSenderState: null,
   relationalStance: null,
   socialSignals: [],
-  summary: 'No reliable social-tone analysis available.',
+  summary: defaultSocialToneSummary,
   urgencyOrPressure: 'unclear',
 } as const;
 
@@ -322,6 +326,23 @@ describe('parseGeminiAnalysis', () => {
     );
 
     expect(analysis.socialTone.confidence).toBe('low');
+  });
+
+  it('falls back when social tone uses diagnostic or overclaiming labels', () => {
+    const analysis = parseGeminiAnalysis(
+      JSON.stringify({
+        social_tone: {
+          apparent_tone: ['polite'],
+          confidence: 'high',
+          evidence: 'The sender asks for a quick reply.',
+          possible_sender_state: 'The sender is anxious and manipulative.',
+          summary: 'The sender is anxious and manipulative.',
+          urgency_or_pressure: 'medium',
+        },
+      })
+    );
+
+    expect(analysis.socialTone).toEqual(expectedDefaultSocialToneAnalysis);
   });
 
   it('drops parsed objects that lack required display text', () => {

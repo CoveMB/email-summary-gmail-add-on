@@ -2,18 +2,18 @@ import type { AddonEvent, ThreadData, ThreadMessage } from '../types/types';
 import { parseDateTimeOrMinimum } from '../utils/DateUtils';
 import { isNonEmptyString, truncateTextWithSuffix } from '../utils/StringUtils';
 
-const missingGmailContextMessage =
+export const missingGmailContextMessage =
   'This add-on needs an opened Gmail thread before it can summarize.';
 
 const emptyThreadMessage = 'The opened Gmail thread has no messages to read.';
 const bodyPreviewMaximumCharacterCount = 300;
 
-type CurrentGmailContext = Readonly<{
+export type CurrentGmailContext = Readonly<{
   accessToken: string;
   messageId: string;
 }>;
 
-const getCurrentGmailContext = (event: AddonEvent): CurrentGmailContext => {
+export const getCurrentGmailContext = (event: AddonEvent): CurrentGmailContext => {
   const gmailPayload = event.gmail;
   const accessToken = gmailPayload?.accessToken;
   const messageId = gmailPayload?.messageId;

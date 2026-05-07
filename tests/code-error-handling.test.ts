@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { GeminiClientError } from '../src/config/GeminiClient';
 import { getUserSafeThreadSummaryError, ThreadSummaryStageError } from '../src/Code';
 
 const sensitiveErrorText =
@@ -33,6 +34,27 @@ describe('getUserSafeThreadSummaryError', () => {
         'EmailSummary could not understand the generated summary. Try refreshing the summary.',
       title: 'Could not parse summary',
     });
+  });
+
+  it('maps missing Gemini API key without exposing key details', () => {
+    const error = getUserSafeThreadSummaryError(new GeminiClientError('missing_key'));
+    const renderedText = `${error.title} ${error.message}`;
+
+    expect(error.kind).toBe('gemini_missing_key');
+    expect(error.title).toBe('Gemini API key missing');
+    expect(renderedText).not.toContain('secret');
+    expect(renderedText).not.toContain('apiKey');
+  });
+
+  it('maps Gemini request failure without exposing prompt or response details', () => {
+    const error = getUserSafeThreadSummaryError(new GeminiClientError('request_failed'));
+    const renderedText = `${error.title} ${error.message}`;
+
+    expect(error.kind).toBe('gemini_request_failure');
+    expect(error.title).toBe('Gemini request failed');
+    expect(renderedText).not.toContain('prompt');
+    expect(renderedText).not.toContain('response body');
+    expect(renderedText).not.toContain('raw body text');
   });
 
   it('maps unexpected failures without exposing raw exception text', () => {

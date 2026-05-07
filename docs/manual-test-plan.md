@@ -25,6 +25,7 @@
 - Verify no raw email body logging occurs.
 - Verify Gemini failures show a safe user-facing error.
 - Verify AI output is clearly reviewable before user action.
+- Verify draft reply creation uses the Gmail compose action only and never sends email automatically.
 
 ## Current Mock Summary Test
 
@@ -42,10 +43,19 @@
 12. Confirm `Social tone` uses cautious labels such as `Possible signal`, `May indicate`, `Confidence`, and `Caution`.
 13. Confirm `Social tone` does not diagnose the sender, claim a known psychological state, or use clinical labels.
 14. Click `Refresh summary` and confirm the card refreshes without changing OAuth scope behavior.
-15. Confirm no prompt, raw response, or full email body is displayed.
-16. Confirm the privacy footer is visible.
-17. Confirm a truncation notice appears when the cleaned thread is truncated.
-18. Confirm OAuth scopes include only current-message readonly Gmail access plus add-on execution.
+15. Confirm the `Create draft reply` button appears only on the summary result card.
+16. Click `Create draft reply`.
+17. Confirm Gmail opens a reply draft for manual review.
+18. Confirm the draft body is deterministic and based on suggested reply points when available.
+19. Confirm the draft stays neutral, editable, and does not invent commitments.
+20. Confirm the draft body includes a reminder to review and edit before sending.
+21. Confirm a result with no useful suggested reply points shows the safe fallback message in the draft body.
+22. Confirm the add-on does not send the draft.
+23. Confirm the Gmail compose/action scope is present in `appsscript.json` and no broader Gmail send or modify scope is present.
+24. Confirm no prompt, raw response, or full email body is displayed.
+25. Confirm the privacy footer is visible.
+26. Confirm a truncation notice appears when the cleaned thread is truncated.
+27. Confirm OAuth scopes include only current-message readonly Gmail access, Gmail compose/action access, and add-on execution.
 
 ## Current Configuration Status Test
 

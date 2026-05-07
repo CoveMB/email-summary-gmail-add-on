@@ -52,6 +52,7 @@ describe('analyzeThreadWithGemini', () => {
       'follow_up_recommendation',
       'overall_confidence',
       'risks_and_ambiguities',
+      'social_tone',
       'suggested_calendar_event',
       'suggested_label',
       'suggested_reply_points',
@@ -67,9 +68,14 @@ describe('analyzeThreadWithGemini', () => {
     const explicitActionItems = expectArray(mockResponse.explicit_action_items);
     const firstActionItem = expectRecord(explicitActionItems[0]);
     const followUpRecommendation = expectRecord(mockResponse.follow_up_recommendation);
+    const socialTone = expectRecord(mockResponse.social_tone);
 
     expect(firstActionItem).toHaveProperty('source_message_ids');
     expect(followUpRecommendation).toHaveProperty('should_follow_up');
+    expect(socialTone).toHaveProperty('apparent_tone');
+    expect(socialTone).toHaveProperty('social_signals');
+    expect(socialTone).toHaveProperty('possible_sender_state');
+    expect(socialTone).toHaveProperty('urgency_or_pressure');
   });
 
   it('returns mock response that ResponseParser can parse safely', () => {
@@ -83,6 +89,10 @@ describe('analyzeThreadWithGemini', () => {
     );
     expect(analysis.followUpRecommendation.shouldFollowUp).toBe(false);
     expect(analysis.suggestedLabel?.name).toBe('EmailSummary Mock');
+    expect(analysis.socialTone.summary).toBe(
+      'The mock message may come across as neutral, practical, and low-pressure.'
+    );
+    expect(analysis.socialTone.urgencyOrPressure).toBe('low');
     expect(analysis.risksAndAmbiguities).toEqual([
       'This is a deterministic mock response and not an interpretation of real email content.',
     ]);

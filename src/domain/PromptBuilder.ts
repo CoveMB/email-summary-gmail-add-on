@@ -1,68 +1,85 @@
-import type { CleanThreadText } from '../types/types';
+import {
+  actionOwnerValues,
+  confidenceValues,
+  type CleanThreadText,
+  urgencyOrPressureValues,
+} from '../types/types';
 import { analysisFieldNames } from './AnalysisSchema';
 
-const schemaExample = {
-  [analysisFieldNames.explicitActionItems.external]: [
-    {
-      confidence: 'high | medium | low',
-      description: 'direct ask or obligation only',
-      [analysisFieldNames.dueDateIso.external]: 'optional ISO date or datetime when explicit',
-      owner: 'recipient | sender | third_party | unclear',
-      [analysisFieldNames.sourceMessageIds.external]: ['optional source message ids'],
-    },
+const confidenceSchemaValue = confidenceValues.join(' | ');
+const actionOwnerSchemaValue = actionOwnerValues.join(' | ');
+const urgencyOrPressureSchemaValue = urgencyOrPressureValues.join(' | ');
+const sourceMessageIdsSchemaExample = ['optional source message ids'] as const;
+
+const buildExplicitActionItemSchemaExample = () => ({
+  confidence: confidenceSchemaValue,
+  description: 'direct ask or obligation only',
+  [analysisFieldNames.dueDateIso.external]: 'optional ISO date or datetime when explicit',
+  owner: actionOwnerSchemaValue,
+  [analysisFieldNames.sourceMessageIds.external]: sourceMessageIdsSchemaExample,
+});
+
+const buildFollowUpRecommendationSchemaExample = () => ({
+  confidence: confidenceSchemaValue,
+  [analysisFieldNames.followUpDateIso.external]: 'optional ISO date or datetime',
+  reason: 'why follow-up is or is not recommended',
+  [analysisFieldNames.shouldFollowUp.external]: false,
+});
+
+const buildSuggestedCalendarEventSchemaExample = () => ({
+  confidence: confidenceSchemaValue,
+  description: 'optional event details',
+  [analysisFieldNames.endDateTimeIso.external]: 'optional ISO datetime',
+  location: 'optional location',
+  [analysisFieldNames.startDateTimeIso.external]: 'optional ISO datetime',
+  title: 'event title',
+});
+
+const buildSuggestedLabelSchemaExample = () => ({
+  confidence: confidenceSchemaValue,
+  name: 'short label name',
+  reason: 'why this label fits',
+});
+
+const buildSocialToneSchemaExample = () => ({
+  [analysisFieldNames.socialToneApparentTone.external]: [
+    'observable tone labels, such as warm, neutral, formal, tense, demanding, avoidant, collaborative, or unclear',
   ],
-  [analysisFieldNames.followUpRecommendation.external]: {
-    confidence: 'high | medium | low',
-    [analysisFieldNames.followUpDateIso.external]: 'optional ISO date or datetime',
-    reason: 'why follow-up is or is not recommended',
-    [analysisFieldNames.shouldFollowUp.external]: false,
-  },
-  [analysisFieldNames.overallConfidence.external]: 'high | medium | low',
+  cautions: [
+    'Tone is inferred from text only.',
+    "The sender's actual emotional state cannot be determined from the email alone.",
+  ],
+  confidence: confidenceSchemaValue,
+  evidence: 'specific wording or context supporting the tone interpretation',
+  [analysisFieldNames.socialTonePossibleSenderState.external]:
+    'cautious communication-signal interpretation or null; never diagnostic',
+  [analysisFieldNames.socialToneRelationalStance.external]:
+    'cautious relational stance summary or null',
+  [analysisFieldNames.socialToneSocialSignals.external]: [
+    'observable emotional or interpersonal signal with evidence',
+  ],
+  summary: 'cautious social-tone summary',
+  [analysisFieldNames.socialToneUrgencyOrPressure.external]: urgencyOrPressureSchemaValue,
+});
+
+const buildThingToConsiderSchemaExample = () => ({
+  confidence: confidenceSchemaValue,
+  description: 'context, caveat, or interpretation; not an obligation',
+  [analysisFieldNames.sourceMessageIds.external]: sourceMessageIdsSchemaExample,
+});
+
+const buildEmailAnalysisSchemaExample = () => ({
+  [analysisFieldNames.explicitActionItems.external]: [buildExplicitActionItemSchemaExample()],
+  [analysisFieldNames.followUpRecommendation.external]: buildFollowUpRecommendationSchemaExample(),
+  [analysisFieldNames.overallConfidence.external]: confidenceSchemaValue,
   [analysisFieldNames.risksAndAmbiguities.external]: ['risk, missing context, or ambiguity'],
-  [analysisFieldNames.suggestedCalendarEvent.external]: {
-    confidence: 'high | medium | low',
-    description: 'optional event details',
-    [analysisFieldNames.endDateTimeIso.external]: 'optional ISO datetime',
-    location: 'optional location',
-    [analysisFieldNames.startDateTimeIso.external]: 'optional ISO datetime',
-    title: 'event title',
-  },
-  [analysisFieldNames.suggestedLabel.external]: {
-    confidence: 'high | medium | low',
-    name: 'short label name',
-    reason: 'why this label fits',
-  },
-  [analysisFieldNames.socialTone.external]: {
-    [analysisFieldNames.socialToneApparentTone.external]: [
-      'observable tone labels, such as warm, neutral, formal, tense, demanding, avoidant, collaborative, or unclear',
-    ],
-    cautions: [
-      'Tone is inferred from text only.',
-      "The sender's actual emotional state cannot be determined from the email alone.",
-    ],
-    confidence: 'high | medium | low',
-    evidence: 'specific wording or context supporting the tone interpretation',
-    [analysisFieldNames.socialTonePossibleSenderState.external]:
-      'cautious communication-signal interpretation or null; never diagnostic',
-    [analysisFieldNames.socialToneRelationalStance.external]:
-      'cautious relational stance summary or null',
-    [analysisFieldNames.socialToneSocialSignals.external]: [
-      'observable emotional or interpersonal signal with evidence',
-    ],
-    summary: 'cautious social-tone summary',
-    [analysisFieldNames.socialToneUrgencyOrPressure.external]:
-      'none | low | medium | high | unclear',
-  },
+  [analysisFieldNames.suggestedCalendarEvent.external]: buildSuggestedCalendarEventSchemaExample(),
+  [analysisFieldNames.suggestedLabel.external]: buildSuggestedLabelSchemaExample(),
+  [analysisFieldNames.socialTone.external]: buildSocialToneSchemaExample(),
   [analysisFieldNames.suggestedReplyPoints.external]: ['point to include in reply'],
   summary: 'brief thread summary',
-  [analysisFieldNames.thingsToConsider.external]: [
-    {
-      confidence: 'high | medium | low',
-      description: 'context, caveat, or interpretation; not an obligation',
-      [analysisFieldNames.sourceMessageIds.external]: ['optional source message ids'],
-    },
-  ],
-};
+  [analysisFieldNames.thingsToConsider.external]: [buildThingToConsiderSchemaExample()],
+});
 
 const buildTruncationInstruction = (cleanThread: CleanThreadText): string =>
   cleanThread.wasTruncated
@@ -91,7 +108,7 @@ export const buildEmailAnalysisPrompt = (cleanThread: CleanThreadText): string =
     '- If there is not enough evidence for social tone, say so.',
     '',
     'Expected JSON schema keys:',
-    JSON.stringify(schemaExample, null, 2),
+    JSON.stringify(buildEmailAnalysisSchemaExample(), null, 2),
     '',
     'Thread metadata:',
     `- originalMessageCount: ${String(cleanThread.originalMessageCount)}`,

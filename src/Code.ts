@@ -1,11 +1,12 @@
-import { analyzeThreadWithGemini } from './config/GeminiClient';
+import { analyzeThreadWithGemini, GeminiClientError } from './config/GeminiClient';
+import { buildCreateDraftReplyResponse } from './domain/Actions';
 import {
   buildErrorCard,
   buildGmailSummaryEntryCard,
   buildHomeCard,
   buildThreadAnalysisDisplayCard,
 } from './domain/Cards';
-import { getCurrentThreadData } from './domain/GmailReader';
+import { getCurrentThreadData, missingGmailContextMessage } from './domain/GmailReader';
 import { buildEmailAnalysisPrompt } from './domain/PromptBuilder';
 import { parseGeminiAnalysis } from './domain/ResponseParser';
 import { buildCleanThreadText } from './domain/ThreadCleaner';
@@ -17,8 +18,6 @@ import type {
   UserSafeThreadSummaryError,
 } from './types/types';
 
-const missingGmailContextMessage =
-  'This add-on needs an opened Gmail thread before it can summarize.';
 const parseFailureSummary = 'Analysis could not be parsed.';
 
 type ThreadSummaryResult = Readonly<{
@@ -42,6 +41,18 @@ const userSafeThreadSummaryErrors: Readonly<
       'EmailSummary could not read the opened Gmail thread. Reopen the thread and try again.',
     title: 'Could not read Gmail thread',
   },
+  gemini_missing_key: {
+    kind: 'gemini_missing_key',
+    message:
+      'EmailSummary needs a configured Gemini API key before real Gemini mode can summarize.',
+    title: 'Gemini API key missing',
+  },
+  gemini_request_failure: {
+    kind: 'gemini_request_failure',
+    message:
+      'EmailSummary could not get a usable Gemini response. Try again later or switch back to mock mode.',
+    title: 'Gemini request failed',
+  },
   no_gmail_context: {
     kind: 'no_gmail_context',
     message: 'Open a Gmail thread, then run EmailSummary from that thread.',
@@ -61,6 +72,9 @@ const userSafeThreadSummaryErrors: Readonly<
 
 const isMissingGmailContextError = (error: unknown): boolean =>
   error instanceof Error && error.message === missingGmailContextMessage;
+
+const getGeminiThreadSummaryErrorKind = (error: GeminiClientError): ThreadSummaryErrorKind =>
+  error.kind === 'missing_key' ? 'gemini_missing_key' : 'gemini_request_failure';
 
 const readCurrentThreadDataSafely = (event: AddonEvent) => {
   try {
@@ -88,7 +102,9 @@ const parseEmailAnalysisSafely = (rawAnalysis: string): EmailAnalysis => {
 export const getUserSafeThreadSummaryError = (error: unknown): UserSafeThreadSummaryError =>
   error instanceof ThreadSummaryStageError
     ? userSafeThreadSummaryErrors[error.kind]
-    : userSafeThreadSummaryErrors.unexpected_failure;
+    : error instanceof GeminiClientError
+      ? userSafeThreadSummaryErrors[getGeminiThreadSummaryErrorKind(error)]
+      : userSafeThreadSummaryErrors.unexpected_failure;
 
 const withUserSafeErrorCard = (
   buildCard: () => GoogleAppsScript.Card_Service.Card
@@ -129,6 +145,7 @@ export const buildThreadSummaryCard = (event: AddonEvent): GoogleAppsScript.Card
   });
 
 Object.assign(globalThis, {
+  buildCreateDraftReplyResponse,
   buildGmailContextualCard,
   buildHomePage,
   buildThreadSummaryCard,
