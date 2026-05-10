@@ -42,12 +42,22 @@ describe('environment variable helpers', () => {
     expect(getEnvironmentVariable('EXAMPLE_PROPERTY')).toBe('configured value');
   });
 
+  it('throws a safe error when a required property is missing', () => {
+    expect(() => getEnvironmentVariable('EXAMPLE_PROPERTY')).toThrow(
+      'Missing required script property: EXAMPLE_PROPERTY'
+    );
+  });
+
   it('infers casted return types from the requested TypeOf value', () => {
-    expectTypeOf(
-      getEnvironmentVariableCasted('EXAMPLE_BOOLEAN', 'boolean')
-    ).toEqualTypeOf<boolean>();
-    expectTypeOf(getEnvironmentVariableCasted('EXAMPLE_NUMBER', 'number')).toEqualTypeOf<number>();
-    expectTypeOf(getEnvironmentVariableCasted('EXAMPLE_STRING', 'string')).toEqualTypeOf<string>();
+    expectTypeOf<
+      ReturnType<typeof getEnvironmentVariableCasted<'boolean'>>
+    >().toEqualTypeOf<boolean>();
+    expectTypeOf<
+      ReturnType<typeof getEnvironmentVariableCasted<'number'>>
+    >().toEqualTypeOf<number>();
+    expectTypeOf<
+      ReturnType<typeof getEnvironmentVariableCasted<'string'>>
+    >().toEqualTypeOf<string>();
   });
 
   it('casts boolean environment variables without replacing false with the default value', () => {
@@ -67,6 +77,10 @@ describe('environment variable helpers', () => {
   it('uses the default value when a property is missing', () => {
     setScriptPropertyValue(null);
 
+    expect(getEnvironmentVariableCastedOr('USE_MOCK_GEMINI', 'boolean', true)).toBe(true);
+  });
+
+  it('uses the default value when script properties are unavailable', () => {
     expect(getEnvironmentVariableCastedOr('USE_MOCK_GEMINI', 'boolean', true)).toBe(true);
   });
 });

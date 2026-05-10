@@ -1,15 +1,27 @@
 import type { EnvironmentVariableCastValue, TypeOf } from '../types/types';
 
+const getScriptProperties = (): GoogleAppsScript.Properties.Properties | undefined => {
+  if (typeof PropertiesService === 'undefined') {
+    return undefined;
+  }
+
+  return PropertiesService.getScriptProperties();
+};
+
+const readOptionalScriptProperty = (envProperty: string): string => {
+  const value = getScriptProperties()?.getProperty(envProperty);
+
+  return value?.trim() ?? '';
+};
+
 const readScriptProperty = (envProperty: string): string => {
-  const value = PropertiesService.getScriptProperties().getProperty(envProperty);
+  const value = readOptionalScriptProperty(envProperty);
 
   if (!value) {
     throw new Error(`Missing required script property: ${envProperty}`);
   }
 
-  console.warn(`${envProperty} : ${value}`);
-
-  return value.trim();
+  return value;
 };
 
 const parseBooleanEnvironmentVariable = (rawEnvironmentValue: string): boolean =>
@@ -66,7 +78,7 @@ export const getEnvironmentVariableCastedOr = <TCastType extends TypeOf>(
   castType: TCastType,
   defaultValue: EnvironmentVariableCastValue<TCastType>
 ): EnvironmentVariableCastValue<TCastType> => {
-  const rawEnvironmentValue = readScriptProperty(envProperty);
+  const rawEnvironmentValue = readOptionalScriptProperty(envProperty);
 
   return rawEnvironmentValue === ''
     ? defaultValue
