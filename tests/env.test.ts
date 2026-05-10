@@ -5,34 +5,21 @@ import {
   getEnvironmentVariableCasted,
   getEnvironmentVariableCastedOr,
 } from '../src/utils/Env';
-
-type ScriptProperties = Readonly<{
-  getProperty: (envProperty: string) => string | null;
-}>;
-
-type ScriptPropertiesService = Readonly<{
-  getScriptProperties: () => ScriptProperties;
-}>;
-
-const setScriptProperties = (scriptProperties: ScriptProperties): void => {
-  const scriptPropertiesService: ScriptPropertiesService = {
-    getScriptProperties: () => scriptProperties,
-  };
-
-  Object.defineProperty(globalThis, 'PropertiesService', {
-    configurable: true,
-    value: scriptPropertiesService,
-  });
-};
+import {
+  installScriptPropertiesMock,
+  uninstallScriptPropertiesMock,
+} from './helpers/script-properties-test-helpers';
 
 const setScriptPropertyValue = (scriptPropertyValue: string | null): void => {
-  setScriptProperties({
-    getProperty: () => scriptPropertyValue,
+  installScriptPropertiesMock({
+    EXAMPLE_PROPERTY: scriptPropertyValue,
+    MAXIMUM_COUNT: scriptPropertyValue,
+    USE_MOCK_GEMINI: scriptPropertyValue,
   });
 };
 
 afterEach(() => {
-  Reflect.deleteProperty(globalThis, 'PropertiesService');
+  uninstallScriptPropertiesMock();
 });
 
 describe('environment variable helpers', () => {
@@ -72,6 +59,28 @@ describe('environment variable helpers', () => {
 
     expect(getEnvironmentVariableCasted('MAXIMUM_COUNT', 'number')).toBe(0);
     expect(getEnvironmentVariableCastedOr('MAXIMUM_COUNT', 'number', 10)).toBe(0);
+  });
+
+  it('casts object, bigint, and symbol environment variables', () => {
+    installScriptPropertiesMock({
+      EXAMPLE_BIGINT: '123',
+      EXAMPLE_OBJECT: '{"enabled":true}',
+      EXAMPLE_SYMBOL: 'symbol-name',
+    });
+
+    expect(getEnvironmentVariableCasted('EXAMPLE_OBJECT', 'object')).toEqual({ enabled: true });
+    expect(getEnvironmentVariableCasted('EXAMPLE_BIGINT', 'bigint')).toBe(123n);
+    expect(getEnvironmentVariableCasted('EXAMPLE_SYMBOL', 'symbol').description).toBe(
+      'symbol-name'
+    );
+  });
+
+  it('rejects function casts', () => {
+    setScriptPropertyValue('ignored');
+
+    expect(() => getEnvironmentVariableCasted('EXAMPLE_PROPERTY', 'function')).toThrow(
+      'Environment variables cannot be cast to functions.'
+    );
   });
 
   it('uses the default value when a property is missing', () => {

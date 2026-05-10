@@ -14,6 +14,9 @@ export type GmailMessageMetadata = Readonly<{
 
 export type GmailAppMock = Pick<typeof GmailApp, 'getMessageById' | 'setCurrentMessageAccessToken'>;
 
+export const defaultGmailAccessToken = 'access-token-123';
+export const defaultGmailMessageId = 'message-123';
+
 export const buildAddonEventWithMessageId = (messageId: string): AddonEvent => ({
   gmail: {
     messageId,
@@ -29,6 +32,9 @@ export const buildAddonEventWithGmailContext = (
     messageId,
   },
 });
+
+export const buildDefaultAddonEventWithGmailContext = (): AddonEvent =>
+  buildAddonEventWithGmailContext(defaultGmailAccessToken, defaultGmailMessageId);
 
 export const buildGmailMessageMock = (
   metadata: GmailMessageMetadata

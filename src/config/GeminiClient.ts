@@ -1,5 +1,5 @@
 import { analysisFieldNames } from '../domain/AnalysisSchema';
-import { getEnvironmentVariable } from '../utils/Env';
+import { getEnvironmentVariableCastedOr } from '../utils/Env';
 import { CONFIG, GEMINI_API_KEY_PROPERTY_NAME } from './Config';
 
 const geminiGenerateContentEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(CONFIG.GEMINI_MODEL)}:generateContent`;
@@ -82,7 +82,8 @@ const isRecord = (value: unknown): value is UnknownRecord =>
 const buildGeminiClientError = (kind: GeminiClientErrorKind, cause: unknown): GeminiClientError =>
   Object.assign(new GeminiClientError(kind), { cause });
 
-const readGeminiApiKey = (): string => getEnvironmentVariable(GEMINI_API_KEY_PROPERTY_NAME);
+const readGeminiApiKey = (): string =>
+  getEnvironmentVariableCastedOr(GEMINI_API_KEY_PROPERTY_NAME, 'string', '');
 
 export const getGeminiApiKeyStatus = (): 'configured' | 'missing' => {
   const apiKey = readGeminiApiKey();

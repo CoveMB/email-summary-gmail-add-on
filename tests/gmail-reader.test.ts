@@ -8,8 +8,11 @@ import {
 import {
   buildAddonEventWithGmailContext,
   buildAddonEventWithMessageId,
+  buildDefaultAddonEventWithGmailContext,
   buildGmailMessageMock,
   buildGmailThreadMock,
+  defaultGmailAccessToken,
+  defaultGmailMessageId,
   installGmailAppMock,
   uninstallGmailAppMock,
 } from './helpers/gmail-test-helpers';
@@ -91,12 +94,10 @@ describe('getCurrentThreadData', () => {
     threadMessages.push(openedMessage, latestMessage);
 
     const gmailAppMock = installGmailAppMock(openedMessage);
-    const threadData = getCurrentThreadData(
-      buildAddonEventWithGmailContext('access-token-123', 'message-123')
-    );
+    const threadData = getCurrentThreadData(buildDefaultAddonEventWithGmailContext());
 
-    expect(gmailAppMock.setCurrentMessageAccessToken).toHaveBeenCalledWith('access-token-123');
-    expect(gmailAppMock.getMessageById).toHaveBeenCalledWith('message-123');
+    expect(gmailAppMock.setCurrentMessageAccessToken).toHaveBeenCalledWith(defaultGmailAccessToken);
+    expect(gmailAppMock.getMessageById).toHaveBeenCalledWith(defaultGmailMessageId);
     expect(forbiddenBodyAccessTrap).not.toHaveBeenCalled();
     expect(olderPlainBodyReader).toHaveBeenCalledOnce();
     expect(latestPlainBodyReader).toHaveBeenCalledOnce();
@@ -121,7 +122,7 @@ describe('getCurrentThreadData', () => {
         },
       ],
       messageCount: 2,
-      openedMessageId: 'message-123',
+      openedMessageId: defaultGmailMessageId,
       subject: 'Project update',
       threadId: 'thread-123',
     });
@@ -146,7 +147,7 @@ describe('getCurrentThreadData', () => {
     installGmailAppMock(openedMessage);
 
     expect(() => {
-      getCurrentThreadData(buildAddonEventWithGmailContext('access-token-123', 'message-123'));
+      getCurrentThreadData(buildDefaultAddonEventWithGmailContext());
     }).toThrow('The opened Gmail thread has no messages to read.');
     expect(forbiddenBodyAccessTrap).not.toHaveBeenCalled();
     expect(plainBodyReader).not.toHaveBeenCalled();
