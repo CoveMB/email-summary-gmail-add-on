@@ -14,19 +14,23 @@ const buildThreadMessage = (
 ): ThreadMessage => ({
   dateIso: new Date(Date.UTC(2026, 4, 6, 12, messageIndex)).toISOString(),
   from: `sender-${String(messageIndex)}@example.com`,
+  id: `message-${String(messageIndex)}`,
   plainBody: `Message ${String(messageIndex)} body`,
   subject: 'Project update',
   to: 'recipient@example.com',
   ...overrides,
 });
 
-const buildThreadData = (messages: readonly ThreadMessage[]): ThreadData => ({
+const buildThreadData = (
+  messages: readonly ThreadMessage[],
+  openedMessageId = 'opened-message-123'
+): ThreadData => ({
   latestBodyPreview: '',
   latestDateIso: messages[messages.length - 1]?.dateIso ?? '',
   latestSender: messages[messages.length - 1]?.from ?? '',
   messages,
   messageCount: messages.length,
-  openedMessageId: 'opened-message-123',
+  openedMessageId,
   subject: 'Project update',
   threadId: 'thread-123',
 });
@@ -126,18 +130,45 @@ describe('buildCleanThreadText', () => {
     );
   });
 
+  it('keeps the opened message when selecting recent context from a long thread', () => {
+    const messages = Array.from({ length: 5 }, (_value, index) => buildThreadMessage(index));
+    const cleanThreadText = buildCleanThreadText(buildThreadData(messages, 'message-0'), {
+      maxMessages: 3,
+    });
+
+    expect(cleanThreadText.includedMessageCount).toBe(3);
+    expect(cleanThreadText.text).toContain('Message 0 body');
+    expect(cleanThreadText.text).toContain('Message 3 body');
+    expect(cleanThreadText.text).toContain('Message 4 body');
+    expect(cleanThreadText.text).not.toContain('Message 1 body');
+    expect(cleanThreadText.text).not.toContain('Message 2 body');
+    expect(cleanThreadText.text.indexOf('Message 0 body')).toBeLessThan(
+      cleanThreadText.text.indexOf('Message 3 body')
+    );
+  });
+
   it('formats cleaned message metadata and bodies', () => {
     const cleanThreadText = buildCleanThreadText(
-      buildThreadData([
-        buildThreadMessage(1, {
-          plainBody: ['New content', '', 'On Mon, May 4, 2026 at 9:00 AM Sam wrote:', '> old'].join(
-            '\n'
-          ),
-        }),
-      ])
+      buildThreadData(
+        [
+          buildThreadMessage(1, {
+            id: 'gmail-message-id-must-not-be-sent',
+            plainBody: [
+              'New content',
+              '',
+              'On Mon, May 4, 2026 at 9:00 AM Sam wrote:',
+              '> old',
+            ].join('\n'),
+          }),
+        ],
+        'gmail-message-id-must-not-be-sent'
+      )
     );
 
     expect(cleanThreadText.text).toContain('From: sender-1@example.com');
+    expect(cleanThreadText.text).toContain('Message ID: message-1');
+    expect(cleanThreadText.text).toContain('Message focus: opened email');
+    expect(cleanThreadText.text).not.toContain('gmail-message-id-must-not-be-sent');
     expect(cleanThreadText.text).toContain('To: recipient@example.com');
     expect(cleanThreadText.text).toContain('Subject: Project update');
     expect(cleanThreadText.text).toContain('New content');

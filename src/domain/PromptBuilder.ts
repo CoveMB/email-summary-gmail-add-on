@@ -9,7 +9,7 @@ import { analysisFieldNames } from './AnalysisSchema';
 const confidenceSchemaValue = confidenceValues.join(' | ');
 const actionOwnerSchemaValue = actionOwnerValues.join(' | ');
 const urgencyOrPressureSchemaValue = urgencyOrPressureValues.join(' | ');
-const sourceMessageIdsSchemaExample = ['optional source message ids'] as const;
+const sourceMessageIdsSchemaExample = ['provided Message ID values only'] as const;
 
 const buildExplicitActionItemSchemaExample = () => ({
   confidence: confidenceSchemaValue,
@@ -68,7 +68,7 @@ const buildThingToConsiderSchemaExample = () => ({
   [analysisFieldNames.sourceMessageIds.external]: sourceMessageIdsSchemaExample,
 });
 
-const buildEmailAnalysisSchemaExample = () => ({
+export const buildEmailAnalysisSchemaExample = () => ({
   [analysisFieldNames.explicitActionItems.external]: [buildExplicitActionItemSchemaExample()],
   [analysisFieldNames.followUpRecommendation.external]: buildFollowUpRecommendationSchemaExample(),
   [analysisFieldNames.overallConfidence.external]: confidenceSchemaValue,
@@ -91,11 +91,12 @@ export const buildEmailAnalysisPrompt = (cleanThread: CleanThreadText): string =
     'Analyze the cleaned Gmail thread below and return JSON only. Do not return markdown, prose, code fences, or comments.',
     '',
     'Focus rules:',
-    '- Treat the latest/opened email as the primary focus.',
-    '- Treat earlier messages as context for the latest/opened email.',
+    '- Treat the message marked "Message focus: opened email" as the primary focus.',
+    '- Treat the latest email and earlier emails as context when they are not the opened email.',
     '- Explicit action items must be direct asks, commitments, or obligations from the thread.',
     '- Things to consider are context, caveats, or interpretations, not obligations.',
-    '- Do not invent tasks, deadlines, owners, events, labels, or facts not supported by the thread.',
+    '- Do not invent tasks, deadlines, owners, events, labels, source message IDs, or facts not supported by the thread.',
+    '- Use only provided Message ID values in source_message_ids. Leave source_message_ids empty when evidence cannot be tied to a provided Message ID.',
     '- Use confidence levels exactly: high, medium, or low.',
     '- Separate evidence from interpretation: summarize what the thread says, and put uncertainty or interpretation in thingsToConsider or risksAndAmbiguities.',
     '- Analyze the communication tone and social tone of the email/thread.',

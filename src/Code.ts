@@ -8,7 +8,7 @@ import {
 } from './domain/Cards';
 import { getCurrentThreadData, missingGmailContextMessage } from './domain/GmailReader';
 import { buildEmailAnalysisPrompt } from './domain/PromptBuilder';
-import { parseGeminiAnalysis } from './domain/ResponseParser';
+import { parseFailureSummary, parseGeminiAnalysis } from './domain/ResponseParser';
 import { buildCleanThreadText } from './domain/ThreadCleaner';
 import type {
   AddonEvent,
@@ -17,8 +17,6 @@ import type {
   ThreadSummaryErrorKind,
   UserSafeThreadSummaryError,
 } from './types/types';
-
-const parseFailureSummary = 'Analysis could not be parsed.';
 
 type ThreadSummaryResult = Readonly<{
   cleanThread: CleanThreadText;

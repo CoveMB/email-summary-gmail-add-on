@@ -16,7 +16,7 @@ import {
 import { readAnalysisField, type AnalysisFieldName } from './AnalysisSchema';
 import { createDefaultSocialToneAnalysis, defaultSocialToneSummary } from './SocialToneDefaults';
 
-const parseFailureSummary = 'Analysis could not be parsed.';
+export const parseFailureSummary = 'Analysis could not be parsed.';
 const parseFailureFallbackReason = 'Parser returned fallback analysis.';
 const safeReasonMaximumLength = 500;
 const analysisTextMaximumLength = 1000;

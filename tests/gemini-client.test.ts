@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { buildEmailAnalysisSchemaExample } from '../src/domain/PromptBuilder';
 import { parseGeminiAnalysis } from '../src/domain/ResponseParser';
 import {
   importWithScriptProperties,
@@ -146,19 +147,9 @@ describe('analyzeThreadWithGemini mock mode', () => {
   it('returns expected external snake_case schema keys', async () => {
     const { analyzeThreadWithGemini } = await importGeminiClient(mockGeminiModeProperties);
     const mockResponse = parseJsonObject(analyzeThreadWithGemini('prompt must not be logged'));
+    const schemaExample = buildEmailAnalysisSchemaExample();
 
-    expect(Object.keys(mockResponse).sort()).toEqual([
-      'explicit_action_items',
-      'follow_up_recommendation',
-      'overall_confidence',
-      'risks_and_ambiguities',
-      'social_tone',
-      'suggested_calendar_event',
-      'suggested_label',
-      'suggested_reply_points',
-      'summary',
-      'things_to_consider',
-    ]);
+    expect(Object.keys(mockResponse).sort()).toEqual(Object.keys(schemaExample).sort());
     expect(mockResponse).not.toHaveProperty('explicitActionItems');
     expect(mockResponse).not.toHaveProperty('followUpRecommendation');
   });

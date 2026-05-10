@@ -1,9 +1,5 @@
-# .husky/pre-commit
 #!/usr/bin/env sh
-set +e
+set -e
 
-pnpm lint:fix || echo "lint:fix failed, continue"
-pnpm format || echo "format failed, continue"
-
-git add -A
-exit 0
+pnpm format:check
+pnpm lint

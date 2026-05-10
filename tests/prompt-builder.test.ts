@@ -16,8 +16,12 @@ describe('buildEmailAnalysisPrompt', () => {
     const prompt = buildEmailAnalysisPrompt(buildCleanThreadText());
 
     expect(prompt).toContain('Please send the signed agreement by Friday.');
-    expect(prompt).toContain('Treat the latest/opened email as the primary focus.');
-    expect(prompt).toContain('Treat earlier messages as context for the latest/opened email.');
+    expect(prompt).toContain(
+      'Treat the message marked "Message focus: opened email" as the primary focus.'
+    );
+    expect(prompt).toContain(
+      'Treat the latest email and earlier emails as context when they are not the opened email.'
+    );
   });
 
   it('distinguishes direct obligations from things to consider', () => {
@@ -29,7 +33,10 @@ describe('buildEmailAnalysisPrompt', () => {
     expect(prompt).toContain(
       'Things to consider are context, caveats, or interpretations, not obligations.'
     );
-    expect(prompt).toContain('Do not invent tasks, deadlines, owners, events, labels, or facts');
+    expect(prompt).toContain(
+      'Do not invent tasks, deadlines, owners, events, labels, source message IDs, or facts'
+    );
+    expect(prompt).toContain('Use only provided Message ID values in source_message_ids.');
   });
 
   it('requires confidence levels, evidence separation, and JSON-only output', () => {

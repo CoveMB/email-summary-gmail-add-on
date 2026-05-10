@@ -76,6 +76,7 @@ describe('getCurrentThreadData', () => {
       forbiddenBodyAccessTrap,
       from: 'first.sender@example.com',
       getThread: () => gmailThread,
+      id: defaultGmailMessageId,
       plainBodyReader: olderPlainBodyReader,
       subject: 'Project update',
       to: 'recipient@example.com',
@@ -86,6 +87,7 @@ describe('getCurrentThreadData', () => {
       forbiddenBodyAccessTrap,
       from: 'latest.sender@example.com',
       getThread: () => gmailThread,
+      id: 'message-latest',
       plainBodyReader: latestPlainBodyReader,
       subject: 'Project update',
       to: 'recipient@example.com, second.recipient@example.com',
@@ -109,6 +111,7 @@ describe('getCurrentThreadData', () => {
         {
           dateIso: '2026-05-06T12:00:00.000Z',
           from: 'first.sender@example.com',
+          id: defaultGmailMessageId,
           plainBody: 'Older full plain body.',
           subject: 'Project update',
           to: 'recipient@example.com',
@@ -116,6 +119,7 @@ describe('getCurrentThreadData', () => {
         {
           dateIso: '2026-05-06T15:30:00.000Z',
           from: 'latest.sender@example.com',
+          id: 'message-latest',
           plainBody: `${'a'.repeat(310)} latest trailing text`,
           subject: 'Project update',
           to: 'recipient@example.com, second.recipient@example.com',

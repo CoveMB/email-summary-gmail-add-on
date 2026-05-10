@@ -7,6 +7,7 @@ export type GmailMessageMetadata = Readonly<{
   forbiddenBodyAccessTrap: () => string;
   from: string;
   getThread: () => GoogleAppsScript.Gmail.GmailThread;
+  id?: string;
   plainBodyReader: () => string;
   subject: string;
   to: string;
@@ -43,6 +44,7 @@ export const buildGmailMessageMock = (
     getBody: metadata.forbiddenBodyAccessTrap,
     getDate: () => metadata.date,
     getFrom: () => metadata.from,
+    getId: () => metadata.id ?? defaultGmailMessageId,
     getPlainBody: metadata.plainBodyReader,
     getRawContent: metadata.forbiddenBodyAccessTrap,
     getSubject: () => metadata.subject,

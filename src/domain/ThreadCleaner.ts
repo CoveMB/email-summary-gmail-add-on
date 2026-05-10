@@ -63,18 +63,63 @@ const sortMessagesByOldestFirst = (messages: readonly ThreadMessage[]): readonly
     return leftMessageTime - rightMessageTime;
   });
 
-const getRecentMessagesInChronologicalOrder = (
-  messages: readonly ThreadMessage[],
+const takeMostRecentMessages = (
+  chronologicalMessages: readonly ThreadMessage[],
   maximumMessageCount: number
 ): readonly ThreadMessage[] => {
-  const chronologicalMessages = sortMessagesByOldestFirst(messages);
   const startIndex = Math.max(0, chronologicalMessages.length - maximumMessageCount);
 
   return chronologicalMessages.slice(startIndex);
 };
 
-const formatCleanMessage = (message: ThreadMessage): string =>
+const findOpenedMessage = (
+  messages: readonly ThreadMessage[],
+  openedMessageId: string
+): ThreadMessage | undefined => messages.find((message) => message.id === openedMessageId);
+
+const getRecentMessagesWithOpenedMessage = (
+  messages: readonly ThreadMessage[],
+  openedMessageId: string,
+  maximumMessageCount: number
+): readonly ThreadMessage[] => {
+  if (maximumMessageCount <= 0) {
+    return [];
+  }
+
+  const chronologicalMessages = sortMessagesByOldestFirst(messages);
+  const openedMessage = findOpenedMessage(chronologicalMessages, openedMessageId);
+
+  if (!openedMessage) {
+    return takeMostRecentMessages(chronologicalMessages, maximumMessageCount);
+  }
+
+  const maximumContextMessageCount = maximumMessageCount - 1;
+  const recentContextMessages = takeMostRecentMessages(
+    chronologicalMessages.filter((message) => message.id !== openedMessage.id),
+    maximumContextMessageCount
+  );
+  const selectedMessageIds = new Set([
+    openedMessage.id,
+    ...recentContextMessages.map((message) => message.id),
+  ]);
+
+  return chronologicalMessages.filter((message) => selectedMessageIds.has(message.id));
+};
+
+const buildSourceMessageId = (messageIndex: number): string =>
+  `message-${String(messageIndex + 1)}`;
+
+const formatOpenedMessageMarker = (message: ThreadMessage, openedMessageId: string): string[] =>
+  message.id === openedMessageId ? ['Message focus: opened email'] : [];
+
+const formatCleanMessage = (
+  openedMessageId: string,
+  message: ThreadMessage,
+  messageIndex: number
+): string =>
   [
+    `Message ID: ${buildSourceMessageId(messageIndex)}`,
+    ...formatOpenedMessageMarker(message, openedMessageId),
     `From: ${message.from}`,
     `To: ${message.to}`,
     `Date: ${message.dateIso}`,
@@ -124,12 +169,15 @@ export const buildCleanThreadText = (
   threadData: ThreadData,
   options: CleanThreadTextOptions = {}
 ): CleanThreadText => {
-  const includedMessages = getRecentMessagesInChronologicalOrder(
+  const includedMessages = getRecentMessagesWithOpenedMessage(
     threadData.messages,
+    threadData.openedMessageId,
     resolveMaximumMessageCount(options)
   );
   const cleanThreadText = includedMessages
-    .map(formatCleanMessage)
+    .map((message, messageIndex) =>
+      formatCleanMessage(threadData.openedMessageId, message, messageIndex)
+    )
     .join(`\n\n${originalMessageDivider}\n\n`);
   const truncatedThreadText = truncateToMaximumCharacterCount(
     cleanThreadText,

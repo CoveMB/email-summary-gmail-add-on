@@ -26,6 +26,7 @@ export type AddonEvent = Readonly<{
 export type ThreadMessage = Readonly<{
   dateIso: string;
   from: string;
+  id: string;
   plainBody: string;
   subject: string;
   to: string;

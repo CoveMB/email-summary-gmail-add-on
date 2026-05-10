@@ -47,6 +47,7 @@ const getLatestThreadMessage = (messages: readonly ThreadMessage[]): ThreadMessa
 const buildThreadMessage = (message: GoogleAppsScript.Gmail.GmailMessage): ThreadMessage => ({
   dateIso: message.getDate().toISOString(),
   from: message.getFrom(),
+  id: message.getId(),
   plainBody: message.getPlainBody(),
   subject: message.getSubject(),
   to: message.getTo(),
