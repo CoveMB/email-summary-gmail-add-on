@@ -1,9 +1,16 @@
 import type { EnvironmentVariableCastValue, TypeOf } from '../types/types';
 
-const readScriptProperty = (envProperty: string): string =>
-  typeof PropertiesService === 'undefined'
-    ? ''
-    : (PropertiesService.getScriptProperties().getProperty(envProperty)?.trim() ?? '');
+const readScriptProperty = (envProperty: string): string => {
+  const value = PropertiesService.getScriptProperties().getProperty(envProperty);
+
+  if (!value) {
+    throw new Error(`Missing required script property: ${envProperty}`);
+  }
+
+  console.warn(`${envProperty} : ${value}`);
+
+  return value.trim();
+};
 
 const parseBooleanEnvironmentVariable = (rawEnvironmentValue: string): boolean =>
   rawEnvironmentValue.toLowerCase() === 'true';

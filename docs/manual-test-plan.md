@@ -55,7 +55,7 @@
 24. Confirm no prompt, raw response, or full email body is displayed.
 25. Confirm the privacy footer is visible.
 26. Confirm a truncation notice appears when the cleaned thread is truncated.
-27. Confirm OAuth scopes include only current-message readonly Gmail access, Gmail compose/action access, and add-on execution.
+27. Confirm OAuth scopes include only current-message readonly Gmail access, Gmail compose/action access, add-on execution, and Apps Script external request for real Gemini mode.
 
 ## Current Configuration Status Test
 
@@ -70,10 +70,10 @@
 
 ## Future Real Gemini Smoke Test
 
-1. Keep `CONFIG.USE_MOCK_GEMINI` set to `true` for normal development.
+1. Keep the Apps Script `USE_MOCK_GEMINI` Script Property unset or set to `true` for normal development.
 2. Treat any free-tier Gemini API key as a personal testing resource only; verify Google's current terms and quota limits before use.
 3. Prepare a synthetic or clearly non-sensitive Gmail thread. Do not use raw personal, confidential, client, financial, medical, legal, credential, or regulated emails for early tests.
-4. For a controlled local test only, set `CONFIG.USE_MOCK_GEMINI` to `false`.
+4. For a controlled local test only, set the Apps Script `USE_MOCK_GEMINI` Script Property to `false`.
 5. Run `npm run check`.
 6. Build and push to Apps Script.
 7. With no `GEMINI_API_KEY` Script Property set, click `Summarize thread`.
@@ -83,7 +83,7 @@
 11. Confirm cleaned thread text is sent to Gemini only after clicking `Summarize thread`.
 12. Confirm the Gemini response is parsed into the normal result card.
 13. Confirm prompts, raw responses, API keys, and email bodies are not logged.
-14. Restore `CONFIG.USE_MOCK_GEMINI` to `true` before committing or continuing normal development.
+14. Restore the Apps Script `USE_MOCK_GEMINI` Script Property to `true` before continuing normal development.
 15. Run `npm run check` again after switching back to mock mode.
 
 ## Current Error UI Test

@@ -12,4 +12,4 @@ This document is a placeholder for a future Google Workspace Marketplace or OAut
 6. Show that the user reviews AI output before acting.
 7. Show settings or documentation for data handling and permissions.
 
-No product demo is available yet because Gmail reading and Gemini analysis are intentionally not implemented in this scaffold.
+Public demo script is not final yet. Current personal MVP can read the opened Gmail thread after user click, run mock Gemini by default, run real Gemini only when explicitly enabled, and create a user-reviewed draft reply without sending email.

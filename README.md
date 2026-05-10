@@ -1,8 +1,8 @@
 # EmailSummary
 
-EmailSummary is a personal Google Workspace Gmail Add-on scaffold for summarizing the currently opened Gmail thread.
+EmailSummary is a personal Google Workspace Gmail Add-on for summarizing the currently opened Gmail thread after explicit user action.
 
-The MVP goal is a private add-on that can later let a user click "Summarize thread" and review structured output such as a summary, action items, reply points, follow-up recommendations, and risks. Product logic is intentionally not implemented in this initialization step.
+The MVP lets a user click "Summarize thread", read only the currently opened Gmail thread, clean the thread text in memory, analyze it with mock Gemini by default or real Gemini when explicitly enabled, then review structured output such as a summary, action items, social tone, reply points, follow-up recommendations, and risks. It can also create a user-reviewed draft reply from suggested reply points without sending email.
 
 The architecture is personal-use ready while keeping a Marketplace-ready path: least-permission OAuth, clear privacy documentation, typed source, reproducible builds, and a clean Apps Script deployment boundary.
 
@@ -83,7 +83,7 @@ Do not place the key in source files, manifests, local environment files, tests,
 To switch from mock mode to real mode for a manual test:
 
 1. Confirm `GEMINI_API_KEY` is configured in Apps Script Script Properties.
-2. In `src/config/Config.ts`, temporarily set `USE_MOCK_GEMINI` to `false`.
+2. In Apps Script Script Properties, set `USE_MOCK_GEMINI` to `false`.
 3. Run `pnpm run check`.
 4. Run `pnpm run build`.
 5. Push the generated `dist/` output with clasp.
@@ -91,7 +91,7 @@ To switch from mock mode to real mode for a manual test:
 
 To switch back to mock mode:
 
-1. In `src/config/Config.ts`, set `USE_MOCK_GEMINI` back to `true`.
+1. In Apps Script Script Properties, set `USE_MOCK_GEMINI` back to `true` or remove it.
 2. Run `pnpm run check`.
 3. Run `pnpm run build`.
 4. Push `dist/` again if you had deployed real mode.

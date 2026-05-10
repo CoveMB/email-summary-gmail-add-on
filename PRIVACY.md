@@ -22,7 +22,7 @@ Users should review all AI-generated summaries, action items, suggested replies,
 
 The app should use least-permission OAuth scopes and request only permissions needed for implemented features.
 
-Real Gemini mode is controlled by `CONFIG.USE_MOCK_GEMINI`. Keep it set to `true` for normal development, set it to `false` only for a controlled manual test, and switch it back to `true` immediately after testing.
+Real Gemini mode is controlled by the Apps Script `USE_MOCK_GEMINI` Script Property. Keep it unset or set to `true` for normal development, set it to `false` only for a controlled manual test, and switch it back to `true` immediately after testing.
 
 ## Status
 

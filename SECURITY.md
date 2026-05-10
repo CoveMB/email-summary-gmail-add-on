@@ -2,7 +2,7 @@
 
 ## Current Security Posture
 
-EmailSummary runs Gemini analysis in mock mode by default. Real Gemini calls are implemented but remain disabled unless `CONFIG.USE_MOCK_GEMINI` is changed to `false`. The app must not store email text or declare broad OAuth scopes.
+EmailSummary runs Gemini analysis in mock mode by default. Real Gemini calls are implemented but remain disabled unless the Apps Script `USE_MOCK_GEMINI` Script Property is set to `false`. The app must not store email text or declare broad OAuth scopes.
 
 Free-tier Gemini API use should be treated as personal testing only. Verify Google's current terms,
 quota limits, and data handling requirements before testing, and do not use free-tier testing as a
@@ -28,10 +28,10 @@ substitute for Marketplace, shared, production, or security review readiness.
 
 ## Real Mode Testing Controls
 
-- Keep `CONFIG.USE_MOCK_GEMINI` set to `true` for normal development.
-- Set `CONFIG.USE_MOCK_GEMINI` to `false` only for controlled manual real-mode tests.
+- Keep the Apps Script `USE_MOCK_GEMINI` Script Property unset or set to `true` for normal development.
+- Set the Apps Script `USE_MOCK_GEMINI` Script Property to `false` only for controlled manual real-mode tests.
 - Set `GEMINI_API_KEY` in Apps Script Script Properties before a real-mode test.
-- Switch `CONFIG.USE_MOCK_GEMINI` back to `true` immediately after testing.
+- Switch the Apps Script `USE_MOCK_GEMINI` Script Property back to `true` immediately after testing.
 - Run the project checks after switching modes.
 
 ## Dependencies

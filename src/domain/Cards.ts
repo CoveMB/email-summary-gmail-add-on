@@ -218,7 +218,7 @@ const buildTruncationSection = (
 ): GoogleAppsScript.Card_Service.CardSection | undefined =>
   cleanThread.wasTruncated
     ? buildAnalysisSection('Truncation notice', [
-        'Cleaned thread text was truncated before mock AI analysis. Review output with this limitation in mind.',
+        'Cleaned thread text was truncated before AI analysis. Review output with this limitation in mind.',
       ])
     : undefined;
 
@@ -236,6 +236,9 @@ const formatGeminiMode = (): string => (CONFIG.USE_MOCK_GEMINI ? 'Mock' : 'Real'
 
 const formatGeminiApiKeyStatus = (): string =>
   getGeminiApiKeyStatus() === 'configured' ? 'Configured' : 'Missing';
+
+const formatThreadAnalysisCardSubtitle = (): string =>
+  CONFIG.USE_MOCK_GEMINI ? 'Mock thread summary' : 'Thread summary';
 
 const buildHomeConfigurationSection = (): GoogleAppsScript.Card_Service.CardSection =>
   buildAnalysisSection('Configuration status', [
@@ -302,15 +305,19 @@ export const buildHomeCard = (): GoogleAppsScript.Card_Service.Card =>
     buildPrivacyFooterSection(),
   ]);
 
-const buildGmailSummaryEntrySection = (): GoogleAppsScript.Card_Service.CardSection =>
-  CardService.newCardSection()
-    .addWidget(
-      buildTextParagraph(
-        'Mock summarization is available. It reads the currently opened thread after you click the button, cleans it in memory, sends it to the mock Gemini client, and displays parsed results.'
-      )
-    )
-    .addWidget(buildTextParagraph('No real Gemini API call is made in mock mode.'))
+const buildGmailSummaryEntrySection = (): GoogleAppsScript.Card_Service.CardSection => {
+  const modeDescription = CONFIG.USE_MOCK_GEMINI
+    ? 'Mock summarization is available. It reads the currently opened thread after you click the button, cleans it in memory, sends it to the mock Gemini client, and displays parsed results.'
+    : 'Real Gemini summarization is enabled. It reads the currently opened thread after you click the button, cleans it in memory, sends cleaned thread text to Gemini, and displays parsed results.';
+  const modePrivacyDescription = CONFIG.USE_MOCK_GEMINI
+    ? 'No real Gemini API call is made in mock mode.'
+    : 'Use real mode only with synthetic or non-sensitive threads during personal MVP testing.';
+
+  return CardService.newCardSection()
+    .addWidget(buildTextParagraph(modeDescription))
+    .addWidget(buildTextParagraph(modePrivacyDescription))
     .addWidget(buildSummarizeThreadButtonSet());
+};
 
 export const buildGmailSummaryEntryCard = (): GoogleAppsScript.Card_Service.Card =>
   buildCard('Gmail thread context', [buildGmailSummaryEntrySection(), buildPrivacyFooterSection()]);
@@ -341,7 +348,7 @@ export const buildThreadAnalysisDisplayCard = (
   analysis: EmailAnalysis,
   cleanThread: CleanThreadText
 ): GoogleAppsScript.Card_Service.Card =>
-  buildCard('Mock thread summary', buildThreadAnalysisSections(analysis, cleanThread));
+  buildCard(formatThreadAnalysisCardSubtitle(), buildThreadAnalysisSections(analysis, cleanThread));
 
 export const buildErrorCard = (
   title: string,

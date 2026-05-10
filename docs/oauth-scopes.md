@@ -6,6 +6,7 @@ Future scopes must be added only when a feature requires them and must be docume
 
 - Uses only the current-message Gmail add-on readonly scope for Gmail content access.
 - Uses the current Gmail add-on compose/action scope for user-reviewed draft reply creation.
+- Uses the Apps Script external request scope only for the Gemini API call in real mode.
 - No Gmail modify scope.
 - No Calendar scope.
 - No mail send scope.
@@ -37,6 +38,12 @@ https://www.googleapis.com/auth/gmail.addons.execute
 
 Reason:
 Allows the Gmail add-on to execute inside Gmail.
+
+Scope:
+https://www.googleapis.com/auth/script.external_request
+
+Reason:
+Allows EmailSummary to call Gemini with cleaned opened-thread text only after explicit user action when real Gemini mode is enabled. Mock mode does not use this network path.
 
 ## Draft Reply Status
 
