@@ -1,4 +1,5 @@
-import type { AddonEvent } from '../types/types';
+import type { AddonEvent, DraftReplyErrorKind } from '../types/types';
+import { buildDraftReplyLogDetails, writeSummaryLogEvent } from '../utils/log/SummaryLog';
 import {
   draftReplyErrorMessages,
   draftReviewReminder,
@@ -11,8 +12,6 @@ import {
 } from './GmailReader';
 
 export const createDraftReplyFunctionName = 'buildCreateDraftReplyResponse';
-
-type DraftReplyErrorKind = keyof typeof draftReplyErrorMessages;
 
 const draftReplyBodyParameterName = 'draftReplyBody';
 const maxDraftReplyPoints = 3;
@@ -112,14 +111,20 @@ export const buildCreateDraftReplyResponse = (
   try {
     const gmailContext = getRequiredDraftGmailContext(event);
     const draftReplyBody = normalizeDraftReplyBody(event.parameters?.[draftReplyBodyParameterName]);
+    const draftReplyLogDetails = buildDraftReplyLogDetails(draftReplyBody);
+    writeSummaryLogEvent('draft_reply_creation_started', draftReplyLogDetails);
+
     const draftReply = createDraftReply(gmailContext, draftReplyBody);
+    writeSummaryLogEvent('draft_reply_created', draftReplyLogDetails);
 
     return CardService.newComposeActionResponseBuilder().setGmailDraft(draftReply).build();
   } catch (error: unknown) {
     if (error instanceof DraftReplyError) {
+      writeSummaryLogEvent('draft_reply_creation_failed', { errorKind: error.kind });
       throw error;
     }
 
+    writeSummaryLogEvent('draft_reply_creation_failed', { errorKind: 'draft_creation_failed' });
     throw new DraftReplyError('draft_creation_failed');
   }
 };

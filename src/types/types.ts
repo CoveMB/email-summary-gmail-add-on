@@ -1,13 +1,3 @@
-export type AppConfig = Readonly<{
-  APP_NAME: string;
-  GEMINI_MAX_OUTPUT_TOKENS: number;
-  GEMINI_MODEL: string;
-  GEMINI_TEMPERATURE: number;
-  MAX_MESSAGES: number;
-  MAX_THREAD_CHARS: number;
-  USE_MOCK_GEMINI: boolean;
-}>;
-
 export type GmailEventPayload = Readonly<{
   accessToken?: string;
   messageId?: string;
@@ -22,6 +12,8 @@ export type AddonEvent = Readonly<{
   parameters?: Readonly<Record<string, string>>;
   [fieldName: string]: unknown;
 }>;
+
+export type DraftReplyErrorKind = 'draft_creation_failed' | 'missing_gmail_context';
 
 export type ThreadMessage = Readonly<{
   dateIso: string;
@@ -78,15 +70,6 @@ export type ThingToConsider = Readonly<{
   sourceMessageIds?: readonly string[];
 }>;
 
-export type SuggestedCalendarEvent = Readonly<{
-  title: string;
-  confidence: Confidence;
-  description?: string;
-  endDateTimeIso?: string;
-  location?: string;
-  startDateTimeIso?: string;
-}>;
-
 export type SuggestedLabel = Readonly<{
   name: string;
   confidence: Confidence;
@@ -94,7 +77,7 @@ export type SuggestedLabel = Readonly<{
 }>;
 
 export type FollowUpRecommendation = Readonly<{
-  shouldFollowUp: boolean;
+  shouldFollowUp: boolean | null;
   confidence: Confidence;
   reason: string;
   followUpDateIso?: string;
@@ -117,7 +100,6 @@ export type EmailAnalysis = Readonly<{
   explicitActionItems: readonly ExplicitActionItem[];
   thingsToConsider: readonly ThingToConsider[];
   suggestedReplyPoints: readonly string[];
-  suggestedCalendarEvent?: SuggestedCalendarEvent;
   suggestedLabel?: SuggestedLabel;
   followUpRecommendation: FollowUpRecommendation;
   socialTone: SocialToneAnalysis;

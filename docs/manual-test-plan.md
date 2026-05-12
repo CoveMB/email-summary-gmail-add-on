@@ -37,7 +37,7 @@
 6. Open the EmailSummary add-on.
 7. Click `Summarize thread`.
 8. Confirm the card displays `Mock thread summary`.
-9. Confirm the card uses separate readable sections for `Summary`, `Social tone`, `Explicit action items`, `Things to consider / think about`, `Suggested reply points`, `Suggested calendar event`, `Suggested label`, `Follow-up`, and `Risks / ambiguities`.
+9. Confirm the card uses separate readable sections for `Summary`, `Explicit action items`, `Suggested reply points`, `Follow-up`, `Risks / ambiguities`, `Things to consider / think about`, `Suggested label` when available, and `Social tone`.
 10. Confirm confidence labels are visible wherever the mock analysis provides confidence.
 11. Confirm evidence lines are visible for action items or things to consider when source message IDs are available.
 12. Confirm `Social tone` uses cautious labels such as `Possible signal`, `May indicate`, `Confidence`, and `Caution`.

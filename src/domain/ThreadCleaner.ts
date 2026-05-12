@@ -140,17 +140,18 @@ const resolveMaximumMessageCount = (options: CleanThreadTextOptions): number =>
 const resolveMaximumCharacterCount = (options: CleanThreadTextOptions): number =>
   Math.max(0, Math.floor(options.maxChars ?? CONFIG.MAX_THREAD_CHARS));
 
+const splitNormalizedLines = (text: string): readonly string[] =>
+  normalizeLineEndings(text).split('\n');
+
 export const stripQuotedReply = (text: string): string => {
-  const normalizedText = normalizeLineEndings(text);
-  const lines = normalizedText.split('\n');
+  const lines = splitNormalizedLines(text);
   const linesBeforeQuotedReply = cutAtFirstMatchingLine(lines, isQuotedReplyMarker);
 
   return linesBeforeQuotedReply.filter((line) => !isQuotedLine(line)).join('\n');
 };
 
 export const stripCommonSignatures = (text: string): string => {
-  const normalizedText = normalizeLineEndings(text);
-  const lines = normalizedText.split('\n');
+  const lines = splitNormalizedLines(text);
   const linesBeforeSignatureDelimiter = cutAtFirstMatchingLine(lines, isSignatureDelimiter);
 
   return removeTrailingMobileSignature(linesBeforeSignatureDelimiter).join('\n');

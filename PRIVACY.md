@@ -16,7 +16,7 @@ Mock mode does not send email content to Gemini. When real Gemini mode is manual
 
 Free-tier Gemini API use should be treated as personal testing only and is subject to Google's current terms, quota limits, and data handling requirements. Early tests should use synthetic or non-sensitive threads. Do not use raw personal, confidential, client, financial, medical, legal, credential, or regulated emails for early real-mode tests.
 
-Users should review all AI-generated summaries, action items, suggested replies, calendar suggestions, labels, and risk notes before acting on them.
+Users should review all AI-generated summaries, action items, suggested replies, labels, and risk notes before acting on them.
 
 ## User Control
 

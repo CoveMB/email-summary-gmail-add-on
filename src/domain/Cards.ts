@@ -6,7 +6,6 @@ import type {
   ExplicitActionItem,
   FollowUpRecommendation,
   SocialToneAnalysis,
-  SuggestedCalendarEvent,
   SuggestedLabel,
   ThingToConsider,
 } from '../types/types';
@@ -16,6 +15,11 @@ import {
   buildLabeledMetadataList,
   buildMetadataLine,
   buildOptionalMetadataLines,
+  formatActionOwnerForDisplay,
+  formatConfidenceForDisplay,
+  formatIsoDateForDisplay,
+  formatSourceMessageIdsForDisplay,
+  formatUrgencyOrPressureForDisplay,
   type MetadataLineInput,
 } from './CardFormatters';
 import { createDraftReplyButtonText } from './DraftReplyCopy';
@@ -104,62 +108,51 @@ const formatDescribedAnalysisItem = (
 
 const formatActionItem = (actionItem: ExplicitActionItem): string =>
   formatDescribedAnalysisItem(actionItem.description, [
-    { label: 'Owner', value: actionItem.owner },
-    { label: 'Confidence', value: actionItem.confidence },
-    { label: 'Due', value: actionItem.dueDateIso },
-    { label: 'Evidence', value: actionItem.sourceMessageIds },
+    { label: 'Owner', value: formatActionOwnerForDisplay(actionItem.owner) },
+    { label: 'Confidence', value: formatConfidenceForDisplay(actionItem.confidence) },
+    { label: 'Due', value: formatIsoDateForDisplay(actionItem.dueDateIso) },
+    { label: 'Evidence', value: formatSourceMessageIdsForDisplay(actionItem.sourceMessageIds) },
   ]);
 
 const formatThingToConsider = (thingToConsider: ThingToConsider): string =>
   formatDescribedAnalysisItem(thingToConsider.description, [
-    { label: 'Confidence', value: thingToConsider.confidence },
-    { label: 'Evidence', value: thingToConsider.sourceMessageIds },
+    { label: 'Confidence', value: formatConfidenceForDisplay(thingToConsider.confidence) },
+    {
+      label: 'Evidence',
+      value: formatSourceMessageIdsForDisplay(thingToConsider.sourceMessageIds),
+    },
   ]);
 
-const formatCalendarSuggestion = (
-  suggestedCalendarEvent: SuggestedCalendarEvent | undefined
-): readonly string[] => {
-  if (!suggestedCalendarEvent) {
-    return [emptySectionText];
-  }
-
-  return buildOptionalMetadataLines([
-    { fallbackValue: '(untitled)', label: 'Title', value: suggestedCalendarEvent.title },
-    { label: 'Confidence', value: suggestedCalendarEvent.confidence },
-    { label: 'Description', value: suggestedCalendarEvent.description },
-    { label: 'Start', value: suggestedCalendarEvent.startDateTimeIso },
-    { label: 'End', value: suggestedCalendarEvent.endDateTimeIso },
-    { label: 'Location', value: suggestedCalendarEvent.location },
-  ]);
-};
-
-const formatLabelSuggestion = (suggestedLabel: SuggestedLabel | undefined): readonly string[] => {
-  if (!suggestedLabel) {
-    return [emptySectionText];
-  }
-
-  return buildOptionalMetadataLines([
+const formatLabelSuggestion = (suggestedLabel: SuggestedLabel): readonly string[] =>
+  buildOptionalMetadataLines([
     { fallbackValue: '(unnamed)', label: 'Label', value: suggestedLabel.name },
-    { label: 'Confidence', value: suggestedLabel.confidence },
+    { label: 'Confidence', value: formatConfidenceForDisplay(suggestedLabel.confidence) },
     { fallbackValue: '(no reason provided)', label: 'Reason', value: suggestedLabel.reason },
   ]);
-};
+
+const formatFollowUpRecommendationValue = (
+  shouldFollowUp: FollowUpRecommendation['shouldFollowUp']
+): string =>
+  shouldFollowUp ? 'Yes' : shouldFollowUp === false ? 'No' : 'No recommendation returned';
 
 const formatFollowUpRecommendation = (
   followUpRecommendation: FollowUpRecommendation
 ): readonly string[] =>
   buildOptionalMetadataLines([
     {
-      label: 'Recommended',
-      value: followUpRecommendation.shouldFollowUp ? 'Yes' : 'No',
+      label: 'Recommendation',
+      value: formatFollowUpRecommendationValue(followUpRecommendation.shouldFollowUp),
     },
-    { label: 'Confidence', value: followUpRecommendation.confidence },
+    { label: 'Confidence', value: formatConfidenceForDisplay(followUpRecommendation.confidence) },
     {
       fallbackValue: '(no reason provided)',
       label: 'Reason',
       value: followUpRecommendation.reason,
     },
-    { label: 'Follow-up date', value: followUpRecommendation.followUpDateIso },
+    {
+      label: 'Follow-up date',
+      value: formatIsoDateForDisplay(followUpRecommendation.followUpDateIso),
+    },
   ]);
 
 type LabeledMetadataListInput = Readonly<{
@@ -191,13 +184,16 @@ const formatSocialToneAnalysis = (socialTone: SocialToneAnalysis): readonly stri
       value: socialTone.possibleSenderState,
     },
     { fallbackValue: 'Unclear', label: 'Relational stance', value: socialTone.relationalStance },
-    { label: 'Urgency/pressure', value: socialTone.urgencyOrPressure },
+    {
+      label: 'Urgency/pressure',
+      value: formatUrgencyOrPressureForDisplay(socialTone.urgencyOrPressure),
+    },
     {
       fallbackValue: 'No specific evidence available.',
       label: 'Evidence',
       value: socialTone.evidence,
     },
-    { label: 'Confidence', value: socialTone.confidence },
+    { label: 'Confidence', value: formatConfidenceForDisplay(socialTone.confidence) },
   ]),
   ...buildLabeledMetadataLists([
     {
@@ -249,7 +245,7 @@ const buildHomeConfigurationSection = (): GoogleAppsScript.Card_Service.CardSect
 const buildSummarySection = (analysis: EmailAnalysis): GoogleAppsScript.Card_Service.CardSection =>
   buildAnalysisSection('Summary', [
     escapeCardText(analysis.summary || '(No summary returned.)'),
-    buildMetadataLine('Confidence', analysis.overallConfidence),
+    buildMetadataLine('Confidence', formatConfidenceForDisplay(analysis.overallConfidence)),
   ]);
 
 const buildSocialToneSection = (
@@ -275,18 +271,12 @@ const buildSuggestedReplyPointsSection = (
 ): GoogleAppsScript.Card_Service.CardSection =>
   buildListSection('Suggested reply points', suggestedReplyPoints);
 
-const buildSuggestedCalendarEventSection = (
-  suggestedCalendarEvent: SuggestedCalendarEvent | undefined
-): GoogleAppsScript.Card_Service.CardSection =>
-  buildAnalysisSection(
-    'Suggested calendar event',
-    formatCalendarSuggestion(suggestedCalendarEvent)
-  );
-
 const buildSuggestedLabelSection = (
   suggestedLabel: SuggestedLabel | undefined
-): GoogleAppsScript.Card_Service.CardSection =>
-  buildAnalysisSection('Suggested label', formatLabelSuggestion(suggestedLabel));
+): GoogleAppsScript.Card_Service.CardSection | undefined =>
+  suggestedLabel
+    ? buildAnalysisSection('Suggested label', formatLabelSuggestion(suggestedLabel))
+    : undefined;
 
 const buildFollowUpSection = (
   followUpRecommendation: FollowUpRecommendation
@@ -328,14 +318,13 @@ const buildThreadAnalysisSections = (
 ): readonly GoogleAppsScript.Card_Service.CardSection[] =>
   [
     buildSummarySection(analysis),
-    buildSocialToneSection(analysis.socialTone),
     buildExplicitActionItemsSection(analysis.explicitActionItems),
-    buildThingsToConsiderSection(analysis.thingsToConsider),
     buildSuggestedReplyPointsSection(analysis.suggestedReplyPoints),
-    buildSuggestedCalendarEventSection(analysis.suggestedCalendarEvent),
-    buildSuggestedLabelSection(analysis.suggestedLabel),
     buildFollowUpSection(analysis.followUpRecommendation),
     buildRisksAndAmbiguitiesSection(analysis.risksAndAmbiguities),
+    buildThingsToConsiderSection(analysis.thingsToConsider),
+    buildSuggestedLabelSection(analysis.suggestedLabel),
+    buildSocialToneSection(analysis.socialTone),
     buildTruncationSection(cleanThread),
     buildButtonSection(buildCreateDraftReplyButtonSet(analysis.suggestedReplyPoints)),
     buildButtonSection(buildRefreshSummaryButtonSet()),

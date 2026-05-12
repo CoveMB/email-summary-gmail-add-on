@@ -20,6 +20,7 @@ import {
   installGmailAppMock,
   uninstallGmailAppMock,
 } from './helpers/gmail-test-helpers';
+import { expectLogEvent, expectSerializedValueToExclude } from './helpers/log-test-helpers';
 
 const buildDraftReplyMessageMock = (
   createDraftReply: (draftReplyBody: string) => GoogleAppsScript.Gmail.GmailDraft
@@ -139,6 +140,7 @@ describe('buildCreateDraftReplyResponse', () => {
   });
 
   it('creates a user-reviewed draft reply from normalized action parameters', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     const gmailDraft = buildGmailDraftMock();
     const createDraftReply = vi.fn((): GoogleAppsScript.Gmail.GmailDraft => gmailDraft);
     const gmailAppMock = installDraftReplyGmailMock(createDraftReply);
@@ -150,6 +152,16 @@ describe('buildCreateDraftReplyResponse', () => {
     expect(gmailAppMock.getMessageById).toHaveBeenCalledWith(defaultGmailMessageId);
     expect(createDraftReply).toHaveBeenCalledWith('Draft body for user review.');
     expect(response.draft).toBe(gmailDraft);
+    expectLogEvent(warnSpy, 'draft_reply_creation_started');
+    expectLogEvent(warnSpy, 'draft_reply_created');
+
+    const serializedLogCalls = JSON.stringify(warnSpy.mock.calls);
+
+    expectSerializedValueToExclude(serializedLogCalls, [
+      defaultGmailAccessToken,
+      defaultGmailMessageId,
+      'Draft body for user review.',
+    ]);
   });
 
   it('uses safe fallback body when action parameters are empty', () => {

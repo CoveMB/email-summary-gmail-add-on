@@ -3,6 +3,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { buildEmailAnalysisSchemaExample } from '../src/domain/PromptBuilder';
 import { parseGeminiAnalysis } from '../src/domain/ResponseParser';
 import {
+  expectGeminiGenerateContentUrl,
+  expectLogEvent,
+  expectSerializedValueToExclude,
+} from './helpers/log-test-helpers';
+import {
   importWithScriptProperties,
   mockGeminiModeProperties,
   realGeminiModeProperties,
@@ -75,6 +80,19 @@ const installUrlFetchAppMock = (
   });
 
   return { calls, fetch };
+};
+
+const installThrowingUrlFetchAppMock = (error: unknown): ReturnType<typeof vi.fn> => {
+  const fetch = vi.fn((): GoogleAppsScript.URL_Fetch.HTTPResponse => {
+    throw error;
+  });
+
+  Object.defineProperty(globalThis, 'UrlFetchApp', {
+    configurable: true,
+    value: { fetch },
+  });
+
+  return fetch;
 };
 
 const buildGeminiResponseBody = (modelText: string): string =>
@@ -216,15 +234,14 @@ describe('analyzeThreadWithGemini real mode', () => {
   });
 
   it('sends a bounded JSON request and extracts model text from a successful response', async () => {
-    const modelText = '{"summary":"ok"}';
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const modelText = '{"summary":"Private model text must not be logged."}';
     const { calls, fetch } = installUrlFetchAppMock(200, buildGeminiResponseBody(modelText));
     const { analyzeThreadWithGemini } = await importGeminiClient(realGeminiModeProperties);
 
-    expect(analyzeThreadWithGemini('synthetic prompt')).toBe(modelText);
+    expect(analyzeThreadWithGemini('Private prompt must not be logged.')).toBe(modelText);
     expect(fetch).toHaveBeenCalledOnce();
-    expect(calls[0]?.url).toContain(
-      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent'
-    );
+    expectGeminiGenerateContentUrl(calls[0]?.url);
     expect(calls[0]?.options).toMatchObject({
       contentType: 'application/json',
       headers: {
@@ -233,7 +250,17 @@ describe('analyzeThreadWithGemini real mode', () => {
       method: 'post',
       muteHttpExceptions: true,
     });
-    expect(calls[0]?.options.payload).toContain('synthetic prompt');
+    expect(calls[0]?.options.payload).toContain('Private prompt must not be logged.');
+    expectLogEvent(warnSpy, 'gemini_request_started');
+    expectLogEvent(warnSpy, 'gemini_response_received');
+
+    const serializedLogCalls = JSON.stringify(warnSpy.mock.calls);
+
+    expectSerializedValueToExclude(serializedLogCalls, [
+      'test-api-key',
+      'Private prompt',
+      'Private model text',
+    ]);
   });
 
   it('throws a typed request error when Gemini returns a non-success status', async () => {
@@ -246,6 +273,28 @@ describe('analyzeThreadWithGemini real mode', () => {
       GeminiClientError,
       'Gemini API request failed.'
     );
+  });
+
+  it('logs fetch exceptions without exposing raw exception details', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const fetch = installThrowingUrlFetchAppMock(
+      new Error('private raw network failure must not be logged')
+    );
+    const { analyzeThreadWithGemini, GeminiClientError } =
+      await importGeminiClient(realGeminiModeProperties);
+
+    expectGeminiClientError(
+      () => analyzeThreadWithGemini('Private prompt must not be logged.'),
+      GeminiClientError,
+      'Gemini API request failed.'
+    );
+
+    expect(fetch).toHaveBeenCalledOnce();
+    expectLogEvent(warnSpy, 'gemini_request_exception');
+    expectSerializedValueToExclude(JSON.stringify(warnSpy.mock.calls), [
+      'private raw network failure',
+      'Private prompt',
+    ]);
   });
 
   it('throws a typed request error for malformed Gemini response bodies', async () => {

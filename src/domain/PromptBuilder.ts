@@ -23,16 +23,8 @@ const buildFollowUpRecommendationSchemaExample = () => ({
   confidence: confidenceSchemaValue,
   [analysisFieldNames.followUpDateIso.external]: 'optional ISO date or datetime',
   reason: 'why follow-up is or is not recommended',
-  [analysisFieldNames.shouldFollowUp.external]: false,
-});
-
-const buildSuggestedCalendarEventSchemaExample = () => ({
-  confidence: confidenceSchemaValue,
-  description: 'optional event details',
-  [analysisFieldNames.endDateTimeIso.external]: 'optional ISO datetime',
-  location: 'optional location',
-  [analysisFieldNames.startDateTimeIso.external]: 'optional ISO datetime',
-  title: 'event title',
+  [analysisFieldNames.shouldFollowUp.external]:
+    'true, false, or null when there is not enough evidence to recommend either',
 });
 
 const buildSuggestedLabelSchemaExample = () => ({
@@ -73,7 +65,6 @@ export const buildEmailAnalysisSchemaExample = () => ({
   [analysisFieldNames.followUpRecommendation.external]: buildFollowUpRecommendationSchemaExample(),
   [analysisFieldNames.overallConfidence.external]: confidenceSchemaValue,
   [analysisFieldNames.risksAndAmbiguities.external]: ['risk, missing context, or ambiguity'],
-  [analysisFieldNames.suggestedCalendarEvent.external]: buildSuggestedCalendarEventSchemaExample(),
   [analysisFieldNames.suggestedLabel.external]: buildSuggestedLabelSchemaExample(),
   [analysisFieldNames.socialTone.external]: buildSocialToneSchemaExample(),
   [analysisFieldNames.suggestedReplyPoints.external]: ['point to include in reply'],
@@ -97,6 +88,8 @@ export const buildEmailAnalysisPrompt = (cleanThread: CleanThreadText): string =
     '- Things to consider are context, caveats, or interpretations, not obligations.',
     '- Do not invent tasks, deadlines, owners, events, labels, source message IDs, or facts not supported by the thread.',
     '- Use only provided Message ID values in source_message_ids. Leave source_message_ids empty when evidence cannot be tied to a provided Message ID.',
+    '- Do not suggest calendar events.',
+    '- Use should_follow_up: null when the thread does not support either a yes or no follow-up recommendation.',
     '- Use confidence levels exactly: high, medium, or low.',
     '- Separate evidence from interpretation: summarize what the thread says, and put uncertainty or interpretation in thingsToConsider or risksAndAmbiguities.',
     '- Analyze the communication tone and social tone of the email/thread.',

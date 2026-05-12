@@ -52,7 +52,6 @@ The result card should include:
 - Explicit action items
 - Things to consider / think about
 - Suggested reply points
-- Suggested calendar event
 - Suggested label
 - Follow-up recommendation
 - Risks / ambiguities
@@ -473,7 +472,6 @@ type EmailAnalysis = {
   explicitActionItems: ExplicitActionItem[];
   thingsToConsider: ThingToConsider[];
   suggestedReplyPoints: string[];
-  suggestedCalendarEvent: SuggestedCalendarEvent | null;
   suggestedLabel: SuggestedLabel | null;
   followUp: FollowUpRecommendation;
   risksOrAmbiguities: string[];
@@ -503,12 +501,12 @@ Result card section order:
 
 1. Summary
 2. Explicit action items
-3. Things to consider / think about
-4. Suggested reply points
-5. Suggested calendar event
-6. Suggested label
-7. Follow-up
-8. Risks / ambiguities
+3. Suggested reply points
+4. Follow-up
+5. Risks / ambiguities
+6. Things to consider / think about
+7. Suggested label when available
+8. Social tone
 9. Privacy footer
 
 Use concise text. Gmail cards can become visually crowded quickly.
@@ -712,4 +710,4 @@ The following rules should not be violated without explicit human approval:
 
 # 19. Short project summary for agents
 
-EmailSummary is a privacy-conscious Gmail Add-on that summarizes only the currently opened thread after the user clicks a button. It uses TypeScript source code bundled into Apps Script-compatible JavaScript, rendered through Google CardService, and calls Gemini API through an isolated client. The MVP is suggestion-first: it may create a draft reply after user confirmation, but calendar events, labels, and follow-up markers remain suggestions only. The project should remain Marketplace-ready by keeping OAuth scopes narrow, avoiding sensitive logging/storage, validating AI output, and documenting all permission/data-processing decisions.
+EmailSummary is a privacy-conscious Gmail Add-on that summarizes only the currently opened thread after the user clicks a button. It uses TypeScript source code bundled into Apps Script-compatible JavaScript, rendered through Google CardService, and calls Gemini API through an isolated client. The MVP is suggestion-first: it may create a draft reply after user confirmation, while labels and follow-up markers remain suggestions only. Calendar suggestions are currently deferred. The project should remain Marketplace-ready by keeping OAuth scopes narrow, avoiding sensitive logging/storage, validating AI output, and documenting all permission/data-processing decisions.

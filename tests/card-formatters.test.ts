@@ -4,6 +4,11 @@ import {
   buildLabeledMetadataList,
   buildMetadataLine,
   buildOptionalMetadataLines,
+  formatActionOwnerForDisplay,
+  formatConfidenceForDisplay,
+  formatIsoDateForDisplay,
+  formatSourceMessageIdsForDisplay,
+  formatUrgencyOrPressureForDisplay,
 } from '../src/domain/CardFormatters';
 
 describe('buildMetadataLine', () => {
@@ -41,5 +46,21 @@ describe('buildLabeledMetadataList', () => {
 
   it('renders the fallback when no values are available', () => {
     expect(buildLabeledMetadataList('Evidence', [], 'none')).toEqual(['<b>Evidence:</b> none']);
+  });
+});
+
+describe('display formatters', () => {
+  it('renders enum values as readable labels', () => {
+    expect(formatActionOwnerForDisplay('third_party')).toBe('Third party');
+    expect(formatConfidenceForDisplay('medium')).toBe('Medium');
+    expect(formatUrgencyOrPressureForDisplay('none')).toBe('None');
+  });
+
+  it('renders ISO dates and source message IDs for card display', () => {
+    expect(formatIsoDateForDisplay('2026-05-12')).toBe('May 12, 2026');
+    expect(formatIsoDateForDisplay('2026-05-12T15:30:00.000Z')).toBe('May 12, 2026, 3:30 PM UTC');
+    expect(formatSourceMessageIdsForDisplay(['message-1', 'message-2'])).toBe(
+      'Message 1, Message 2'
+    );
   });
 });

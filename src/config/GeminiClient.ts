@@ -1,12 +1,17 @@
 import { analysisFieldNames } from '../domain/AnalysisSchema';
 import { getEnvironmentVariableCastedOr } from '../utils/Env';
+import { isRecord, type UnknownRecord } from '../utils/TypeGuards';
+import {
+  buildGeminiRequestLogDetails,
+  buildGeminiResponseLogDetails,
+  writeSummaryLogEvent,
+} from '../utils/log/SummaryLog';
 import { CONFIG, GEMINI_API_KEY_PROPERTY_NAME } from './Config';
 
 const geminiGenerateContentEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(CONFIG.GEMINI_MODEL)}:generateContent`;
 const missingGeminiApiKeyMessage = 'Gemini API key is missing.';
 const geminiRequestFailedMessage = 'Gemini API request failed.';
 
-type UnknownRecord = Readonly<Record<string, unknown>>;
 export type GeminiClientErrorKind = 'missing_key' | 'request_failed';
 
 export class GeminiClientError extends Error {
@@ -22,7 +27,7 @@ const mockGeminiAnalysisResponse = {
       confidence: 'high',
       description: 'Review the thread and decide whether a real Gemini call should be enabled.',
       owner: 'sender',
-      [analysisFieldNames.sourceMessageIds.external]: ['mock-message-1'],
+      [analysisFieldNames.sourceMessageIds.external]: ['message-1'],
     },
   ],
   [analysisFieldNames.followUpRecommendation.external]: {
@@ -34,11 +39,6 @@ const mockGeminiAnalysisResponse = {
   [analysisFieldNames.risksAndAmbiguities.external]: [
     'This is a deterministic mock response and not an interpretation of real email content.',
   ],
-  [analysisFieldNames.suggestedCalendarEvent.external]: {
-    confidence: 'low',
-    description: 'No real calendar event inferred in mock mode.',
-    title: 'Review EmailSummary Gemini setup',
-  },
   [analysisFieldNames.suggestedLabel.external]: {
     confidence: 'medium',
     name: 'EmailSummary Mock',
@@ -71,13 +71,10 @@ const mockGeminiAnalysisResponse = {
       confidence: 'medium',
       description:
         'Mock output proves the pipeline shape without reading secrets or sending network requests.',
-      [analysisFieldNames.sourceMessageIds.external]: ['mock-message-1'],
+      [analysisFieldNames.sourceMessageIds.external]: ['message-1'],
     },
   ],
 } as const;
-
-const isRecord = (value: unknown): value is UnknownRecord =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
 
 const buildGeminiClientError = (kind: GeminiClientErrorKind, cause: unknown): GeminiClientError =>
   Object.assign(new GeminiClientError(kind), { cause });
@@ -120,6 +117,8 @@ const fetchGeminiGenerateContent = (
   apiKey: string,
   prompt: string
 ): GoogleAppsScript.URL_Fetch.HTTPResponse => {
+  writeSummaryLogEvent('gemini_request_started', buildGeminiRequestLogDetails(prompt));
+
   try {
     return UrlFetchApp.fetch(geminiGenerateContentEndpoint, {
       contentType: 'application/json',
@@ -131,6 +130,7 @@ const fetchGeminiGenerateContent = (
       payload: buildGeminiRequestPayload(prompt),
     });
   } catch (error: unknown) {
+    writeSummaryLogEvent('gemini_request_exception', { errorKind: 'fetch_exception' });
     throw buildGeminiClientError('request_failed', error);
   }
 };
@@ -179,18 +179,40 @@ const analyzeThreadWithRealGemini = (prompt: string): string => {
   const apiKey = getRequiredGeminiApiKey();
   const response = fetchGeminiGenerateContent(apiKey, prompt);
   const responseCode = response.getResponseCode();
+  const responseBody = response.getContentText();
 
   if (responseCode < 200 || responseCode >= 300) {
+    writeSummaryLogEvent('gemini_request_failed', { responseCode });
     throw new GeminiClientError('request_failed');
   }
 
-  return extractGeminiModelText(response.getContentText());
+  let modelText: string;
+
+  try {
+    modelText = extractGeminiModelText(responseBody);
+  } catch (error: unknown) {
+    writeSummaryLogEvent('gemini_response_unusable', {
+      responseBodyCharacterCount: responseBody.length,
+      responseCode,
+    });
+
+    throw error;
+  }
+
+  writeSummaryLogEvent(
+    'gemini_response_received',
+    buildGeminiResponseLogDetails(responseCode, responseBody, modelText)
+  );
+
+  return modelText;
 };
 
 export const analyzeThreadWithGemini = (prompt: string): string => {
   if (!CONFIG.USE_MOCK_GEMINI) {
     return analyzeThreadWithRealGemini(prompt);
   }
+
+  writeSummaryLogEvent('gemini_mock_response_used', buildGeminiRequestLogDetails(prompt));
 
   return JSON.stringify(mockGeminiAnalysisResponse);
 };

@@ -55,7 +55,6 @@ describe('buildEmailAnalysisPrompt', () => {
     expect(prompt).toContain('"explicit_action_items"');
     expect(prompt).toContain('"things_to_consider"');
     expect(prompt).toContain('"suggested_reply_points"');
-    expect(prompt).toContain('"suggested_calendar_event"');
     expect(prompt).toContain('"suggested_label"');
     expect(prompt).toContain('"follow_up_recommendation"');
     expect(prompt).toContain('"social_tone"');
@@ -68,7 +67,16 @@ describe('buildEmailAnalysisPrompt', () => {
     expect(prompt).toContain('"cautions"');
     expect(prompt).toContain('"risks_and_ambiguities"');
     expect(prompt).toContain('"overall_confidence"');
+    expect(prompt).not.toContain('"suggested_calendar_event"');
     expect(prompt).not.toContain('"explicitActionItems"');
+  });
+
+  it('excludes calendar suggestions and allows unknown follow-up state', () => {
+    const prompt = buildEmailAnalysisPrompt(buildCleanThreadText());
+
+    expect(prompt).toContain('Do not suggest calendar events.');
+    expect(prompt).toContain('Use should_follow_up: null');
+    expect(prompt).toContain('true, false, or null');
   });
 
   it('includes non-diagnostic social tone caution instructions', () => {

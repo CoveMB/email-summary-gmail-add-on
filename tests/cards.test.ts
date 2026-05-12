@@ -53,14 +53,6 @@ const buildEmailAnalysis = (): EmailAnalysis => ({
     summary: 'Direct and practical.',
     urgencyOrPressure: 'medium',
   },
-  suggestedCalendarEvent: {
-    confidence: 'medium',
-    description: 'Review agreement.',
-    endDateTimeIso: '2026-05-12T15:30:00.000Z',
-    location: 'Video call',
-    startDateTimeIso: '2026-05-12T15:00:00.000Z',
-    title: 'Agreement review',
-  },
   suggestedLabel: {
     confidence: 'high',
     name: 'Contracts',
@@ -99,7 +91,7 @@ describe('buildHomeCard', () => {
     expect(card.header?.subtitle).toBe('Personal Gmail thread brief assistant');
     expect(cardText).toContain('<b>Gemini mode:</b> Real');
     expect(cardText).toContain('<b>API key status:</b> Missing');
-    expect(cardText).toContain('Real mode sends cleaned thread text to Gemini');
+    expect(cardText).toContain('The text is sent to Gemini');
   });
 });
 
@@ -131,23 +123,51 @@ describe('buildThreadAnalysisDisplayCard', () => {
     expect(card.header?.subtitle).toBe('Mock thread summary');
     expect(readVisibleSectionHeaders(card)).toEqual([
       'Summary',
-      'Social tone',
       'Explicit action items',
-      'Things to consider / think about',
       'Suggested reply points',
-      'Suggested calendar event',
-      'Suggested label',
       'Follow-up',
       'Risks / ambiguities',
+      'Things to consider / think about',
+      'Suggested label',
+      'Social tone',
       'Truncation notice',
     ]);
     expect(cardText).toContain('Recipient should review &lt;agreement&gt;.');
     expect(cardText).toContain('Send the signed &lt;agreement&gt;.');
+    expect(cardText).toContain('<b>Owner:</b> Recipient');
+    expect(cardText).toContain('<b>Confidence:</b> High');
+    expect(cardText).toContain('<b>Due:</b> May 12, 2026');
+    expect(cardText).toContain('<b>Evidence:</b> Message 1');
+    expect(cardText).toContain('<b>Recommendation:</b> Yes');
+    expect(cardText).toContain('<b>Follow-up date:</b> May 13, 2026');
     expect(cardText).toContain('<b>Caution:</b>');
+    expect(cardText).not.toContain('Suggested calendar event');
     expect(cardText).toContain('Cleaned thread text was truncated before AI analysis.');
     expect(draftButton.composeAction?.composedEmailType).toBe('REPLY_AS_DRAFT');
     expect(draftButton.composeAction?.action.functionName).toBe('buildCreateDraftReplyResponse');
     expect(refreshButton.onClickAction?.functionName).toBe('buildThreadSummaryCard');
+  });
+
+  it('does not show optional label section and missing follow-up as a no recommendation', async () => {
+    const { buildThreadAnalysisDisplayCard } = await importCards(mockGeminiModeProperties);
+    const { suggestedLabel: _suggestedLabel, ...baseAnalysisWithoutLabel } = buildEmailAnalysis();
+    const analysis: EmailAnalysis = {
+      ...baseAnalysisWithoutLabel,
+      followUpRecommendation: {
+        confidence: 'low',
+        reason: '',
+        shouldFollowUp: null,
+      },
+    };
+    const card = buildThreadAnalysisDisplayCard(
+      analysis,
+      buildCleanThreadText(false)
+    ) as unknown as CardModel;
+    const cardText = readCardText(card);
+
+    expect(readVisibleSectionHeaders(card)).not.toContain('Suggested label');
+    expect(cardText).toContain('<b>Recommendation:</b> No recommendation returned');
+    expect(cardText).not.toContain('<b>Recommended:</b> No');
   });
 });
 

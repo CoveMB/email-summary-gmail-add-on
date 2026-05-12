@@ -11,6 +11,7 @@ import {
   installGmailAppMock,
   uninstallGmailAppMock,
 } from './helpers/gmail-test-helpers';
+import { expectLogEvent, expectSerializedValueToExclude } from './helpers/log-test-helpers';
 import { importWithCardService, mockGeminiModeProperties } from './helpers/module-test-helpers';
 import { uninstallScriptPropertiesMock } from './helpers/script-properties-test-helpers';
 
@@ -40,10 +41,13 @@ describe('Apps Script entry points', () => {
 
 describe('buildThreadSummaryCard', () => {
   it('summarizes the opened thread after explicit action using the mock Gemini pipeline', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     const forbiddenBodyAccessTrap = vi.fn((): string => {
       throw new Error('HTML body must not be read.');
     });
-    const plainBodyReader = vi.fn((): string => 'Please confirm whether Friday still works.');
+    const plainBodyReader = vi.fn(
+      (): string => 'Private email body: Please confirm whether Friday still works.'
+    );
     const threadMessages: GoogleAppsScript.Gmail.GmailMessage[] = [];
     const gmailThread = buildGmailThreadMock('thread-123', threadMessages);
     const openedMessage = buildGmailMessageMock({
@@ -52,7 +56,7 @@ describe('buildThreadSummaryCard', () => {
       from: 'sender@example.com',
       getThread: () => gmailThread,
       plainBodyReader,
-      subject: 'Project update',
+      subject: 'Private project update subject',
       to: 'recipient@example.com',
     });
     threadMessages.push(openedMessage);
@@ -70,6 +74,19 @@ describe('buildThreadSummaryCard', () => {
     expect(plainBodyReader).toHaveBeenCalledOnce();
     expect(card.header?.subtitle).toBe('Mock thread summary');
     expect(cardText).toContain('EmailSummary mock analysis response.');
+    expectLogEvent(warnSpy, 'summary_started');
+    expectLogEvent(warnSpy, 'summary_completed');
+
+    const serializedLogCalls = JSON.stringify(warnSpy.mock.calls);
+
+    expectSerializedValueToExclude(serializedLogCalls, [
+      defaultGmailAccessToken,
+      defaultGmailMessageId,
+      'Private email body',
+      'sender@example.com',
+      'recipient@example.com',
+      'Private project update subject',
+    ]);
   });
 
   it('returns a user-safe error card when Gmail context is missing', async () => {

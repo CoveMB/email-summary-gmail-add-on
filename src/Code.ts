@@ -17,6 +17,16 @@ import type {
   ThreadSummaryErrorKind,
   UserSafeThreadSummaryError,
 } from './types/types';
+import {
+  buildCleanThreadLogDetails,
+  buildEmailAnalysisLogDetails,
+  buildGeminiAnalysisParseLogDetails,
+  buildSummaryPipelineLogDetails,
+  buildThreadReadLogDetails,
+  type SummaryLogDetailsByEventName,
+  type SummaryLogEventName,
+  writeSummaryLogEvent,
+} from './utils/log/SummaryLog';
 
 type ThreadSummaryResult = Readonly<{
   cleanThread: CleanThreadText;
@@ -66,7 +76,7 @@ const userSafeThreadSummaryErrors: Readonly<
     message: 'EmailSummary could not generate a summary. Try again in a moment.',
     title: 'Summary unavailable',
   },
-};
+} as const;
 
 const isMissingGmailContextError = (error: unknown): boolean =>
   error instanceof Error && error.message === missingGmailContextMessage;
@@ -87,10 +97,29 @@ const readCurrentThreadDataSafely = (event: AddonEvent) => {
 const isParseFailureAnalysis = (emailAnalysis: EmailAnalysis): boolean =>
   emailAnalysis.summary === parseFailureSummary;
 
-const parseEmailAnalysisSafely = (rawAnalysis: string): EmailAnalysis => {
-  const emailAnalysis = parseGeminiAnalysis(rawAnalysis);
+const logSummaryEvent = <EventName extends SummaryLogEventName>(
+  eventName: EventName,
+  details: SummaryLogDetailsByEventName[EventName]
+): void => {
+  writeSummaryLogEvent(eventName, details);
+};
+
+const buildAllowedSourceMessageIds = (cleanThread: CleanThreadText): readonly string[] =>
+  Array.from(
+    { length: cleanThread.includedMessageCount },
+    (_unusedValue, messageIndex) => `message-${String(messageIndex + 1)}`
+  );
+
+const parseCurrentThreadEmailAnalysisSafely = (
+  rawAnalysis: string,
+  cleanThread: CleanThreadText
+): EmailAnalysis => {
+  const emailAnalysis = parseGeminiAnalysis(rawAnalysis, {
+    allowedSourceMessageIds: buildAllowedSourceMessageIds(cleanThread),
+  });
 
   if (isParseFailureAnalysis(emailAnalysis)) {
+    logSummaryEvent('summary_parse_failure', buildGeminiAnalysisParseLogDetails(rawAnalysis));
     throw new ThreadSummaryStageError('parse_failure');
   }
 
@@ -111,17 +140,25 @@ const withUserSafeErrorCard = (
     return buildCard();
   } catch (error: unknown) {
     const userSafeError = getUserSafeThreadSummaryError(error);
+    logSummaryEvent('summary_failed', { errorKind: userSafeError.kind });
 
     return buildErrorCard(userSafeError.title, userSafeError.message);
   }
 };
 
 const summarizeCurrentThread = (event: AddonEvent): ThreadSummaryResult => {
+  logSummaryEvent('summary_started', buildSummaryPipelineLogDetails());
+
   const threadData = readCurrentThreadDataSafely(event);
+  logSummaryEvent('summary_thread_read_completed', buildThreadReadLogDetails(threadData));
+
   const cleanThread = buildCleanThreadText(threadData);
+  logSummaryEvent('summary_thread_cleaned', buildCleanThreadLogDetails(cleanThread));
+
   const prompt = buildEmailAnalysisPrompt(cleanThread);
   const rawAnalysis = analyzeThreadWithGemini(prompt);
-  const emailAnalysis = parseEmailAnalysisSafely(rawAnalysis);
+  const emailAnalysis = parseCurrentThreadEmailAnalysisSafely(rawAnalysis, cleanThread);
+  logSummaryEvent('summary_completed', buildEmailAnalysisLogDetails(emailAnalysis));
 
   return {
     cleanThread,

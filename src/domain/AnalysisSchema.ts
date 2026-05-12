@@ -5,10 +5,6 @@ export const analysisFieldNames = {
     external: 'due_date_iso',
     internal: 'dueDateIso',
   },
-  endDateTimeIso: {
-    external: 'end_date_time_iso',
-    internal: 'endDateTimeIso',
-  },
   explicitActionItems: {
     external: 'explicit_action_items',
     internal: 'explicitActionItems',
@@ -72,14 +68,6 @@ export const analysisFieldNames = {
   sourceMessageIds: {
     external: 'source_message_ids',
     internal: 'sourceMessageIds',
-  },
-  startDateTimeIso: {
-    external: 'start_date_time_iso',
-    internal: 'startDateTimeIso',
-  },
-  suggestedCalendarEvent: {
-    external: 'suggested_calendar_event',
-    internal: 'suggestedCalendarEvent',
   },
   suggestedLabel: {
     external: 'suggested_label',

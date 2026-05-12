@@ -58,7 +58,7 @@ describe('createEmptyEmailAnalysis', () => {
       followUpRecommendation: {
         confidence: 'low',
         reason: '',
-        shouldFollowUp: false,
+        shouldFollowUp: null,
       },
       overallConfidence: 'low',
       risksAndAmbiguities: [],
@@ -76,7 +76,7 @@ describe('createParseFailureEmailAnalysis', () => {
 
     expect(analysis.summary).toBe('Analysis could not be parsed.');
     expect(analysis.overallConfidence).toBe('low');
-    expect(analysis.followUpRecommendation.shouldFollowUp).toBe(false);
+    expect(analysis.followUpRecommendation.shouldFollowUp).toBeNull();
     expect(analysis.followUpRecommendation.reason).toHaveLength(500);
     expect(analysis.risksAndAmbiguities).toEqual([analysis.followUpRecommendation.reason]);
   });
@@ -120,14 +120,6 @@ describe('parseGeminiAnalysis', () => {
         },
         overallConfidence: 'high',
         risksAndAmbiguities: ['Deadline timezone is unclear.'],
-        suggestedCalendarEvent: {
-          confidence: 'medium',
-          description: 'Review agreement changes.',
-          endDateTimeIso: '2026-05-09T15:30:00.000Z',
-          location: 'Video call',
-          startDateTimeIso: '2026-05-09T15:00:00.000Z',
-          title: 'Agreement review',
-        },
         suggestedLabel: {
           confidence: 'high',
           name: 'Contracts',
@@ -171,7 +163,6 @@ describe('parseGeminiAnalysis', () => {
     });
     expect(analysis.thingsToConsider[0]?.description).toBe('Legal review may still be pending.');
     expect(analysis.suggestedReplyPoints).toEqual(['Confirm signature timing.']);
-    expect(analysis.suggestedCalendarEvent?.title).toBe('Agreement review');
     expect(analysis.suggestedLabel?.name).toBe('Contracts');
     expect(analysis.followUpRecommendation.shouldFollowUp).toBe(true);
     expect(analysis.socialTone).toEqual({
@@ -210,12 +201,6 @@ describe('parseGeminiAnalysis', () => {
         },
         overall_confidence: 'medium',
         risks_and_ambiguities: ['Mock data is not real analysis.'],
-        suggested_calendar_event: {
-          confidence: 'low',
-          end_date_time_iso: '2026-05-09T15:30:00.000Z',
-          start_date_time_iso: '2026-05-09T15:00:00.000Z',
-          title: 'Mock review',
-        },
         suggested_label: {
           confidence: 'medium',
           name: 'Mock',
@@ -247,7 +232,6 @@ describe('parseGeminiAnalysis', () => {
     });
     expect(analysis.overallConfidence).toBe('medium');
     expect(analysis.risksAndAmbiguities).toEqual(['Mock data is not real analysis.']);
-    expect(analysis.suggestedCalendarEvent?.startDateTimeIso).toBe('2026-05-09T15:00:00.000Z');
     expect(analysis.suggestedLabel?.name).toBe('Mock');
     expect(analysis.suggestedReplyPoints).toEqual(['Confirm mock mode is expected.']);
     expect(analysis.thingsToConsider[0]?.sourceMessageIds).toEqual(['message-124']);
@@ -284,10 +268,54 @@ describe('parseGeminiAnalysis', () => {
     expect(analysis.followUpRecommendation).toEqual({
       confidence: 'low',
       reason: '',
-      shouldFollowUp: false,
+      shouldFollowUp: null,
     });
     expect(analysis.socialTone).toEqual(expectedDefaultSocialToneAnalysis);
     expect(analysis.overallConfidence).toBe('low');
+  });
+
+  it('keeps explicit negative follow-up distinct from missing follow-up data', () => {
+    const analysis = parseGeminiAnalysis(
+      JSON.stringify({
+        follow_up_recommendation: {
+          confidence: 'medium',
+          reason: 'No reply is needed because the thread is informational.',
+          should_follow_up: false,
+        },
+      })
+    );
+
+    expect(analysis.followUpRecommendation).toEqual({
+      confidence: 'medium',
+      reason: 'No reply is needed because the thread is informational.',
+      shouldFollowUp: false,
+    });
+  });
+
+  it('keeps only supported source message IDs from the opened thread', () => {
+    const analysis = parseGeminiAnalysis(
+      JSON.stringify({
+        explicit_action_items: [
+          {
+            confidence: 'high',
+            description: 'Reply with approval.',
+            owner: 'recipient',
+            source_message_ids: ['message-1', 'message-2', 'external-id'],
+          },
+        ],
+        things_to_consider: [
+          {
+            confidence: 'medium',
+            description: 'The deadline may need confirmation.',
+            source_message_ids: ['message-2'],
+          },
+        ],
+      }),
+      { allowedSourceMessageIds: ['message-1'] }
+    );
+
+    expect(analysis.explicitActionItems[0]?.sourceMessageIds).toEqual(['message-1']);
+    expect(analysis.thingsToConsider[0]?.sourceMessageIds).toBeUndefined();
   });
 
   it('falls back when social_tone is malformed', () => {
@@ -355,10 +383,6 @@ describe('parseGeminiAnalysis', () => {
             owner: 'recipient',
           },
         ],
-        suggested_calendar_event: {
-          confidence: 'medium',
-          description: 'Calendar details without title.',
-        },
         suggested_label: {
           confidence: 'medium',
           name: '',
@@ -375,7 +399,6 @@ describe('parseGeminiAnalysis', () => {
 
     expect(analysis.explicitActionItems).toEqual([]);
     expect(analysis.thingsToConsider).toEqual([]);
-    expect(analysis.suggestedCalendarEvent).toBeUndefined();
     expect(analysis.suggestedLabel).toBeUndefined();
   });
 
@@ -395,10 +418,6 @@ describe('parseGeminiAnalysis', () => {
           shouldFollowUp: true,
         },
         overallConfidence: 'maximum',
-        suggestedCalendarEvent: {
-          confidence: 'likely',
-          title: 'Review',
-        },
         suggestedLabel: {
           confidence: 'sure',
           name: 'Review',
@@ -411,7 +430,6 @@ describe('parseGeminiAnalysis', () => {
     expect(analysis.explicitActionItems[0]?.confidence).toBe('low');
     expect(analysis.explicitActionItems[0]?.owner).toBe('unclear');
     expect(analysis.followUpRecommendation.confidence).toBe('low');
-    expect(analysis.suggestedCalendarEvent?.confidence).toBe('low');
     expect(analysis.suggestedLabel?.confidence).toBe('low');
   });
 
@@ -465,7 +483,7 @@ describe('parseGeminiAnalysis', () => {
 
     expect(analysis.summary).toHaveLength(1000);
     expect(analysis.explicitActionItems[0]?.description).toHaveLength(1000);
-    expect(analysis.explicitActionItems[0]?.sourceMessageIds?.[0]).toHaveLength(200);
+    expect(analysis.explicitActionItems[0]?.sourceMessageIds).toBeUndefined();
     expect(analysis.followUpRecommendation.reason).toHaveLength(1000);
     expect(analysis.risksAndAmbiguities[0]).toHaveLength(1000);
     expect(analysis.suggestedLabel?.name).toHaveLength(80);

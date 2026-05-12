@@ -8,11 +8,11 @@ import {
   type ExplicitActionItem,
   type FollowUpRecommendation,
   type SocialToneAnalysis,
-  type SuggestedCalendarEvent,
   type SuggestedLabel,
   type ThingToConsider,
   type UrgencyOrPressure,
 } from '../types/types';
+import { isRecord, type UnknownRecord } from '../utils/TypeGuards';
 import { readAnalysisField, type AnalysisFieldName } from './AnalysisSchema';
 import { createDefaultSocialToneAnalysis, defaultSocialToneSummary } from './SocialToneDefaults';
 
@@ -22,6 +22,7 @@ const safeReasonMaximumLength = 500;
 const analysisTextMaximumLength = 1000;
 const labelNameMaximumLength = 80;
 const sourceMessageIdMaximumLength = 200;
+const sourceMessageIdPattern = /^message-[1-9]\d*$/;
 const unsafeSocialToneTerms = [
   'anxious',
   'manipulative',
@@ -33,20 +34,20 @@ const unsafeSocialToneTerms = [
   'psychotic',
 ] as const;
 
-type UnknownRecord = Readonly<Record<string, unknown>>;
 type NormalizedDescribedItemBase = Readonly<{
   confidence: Confidence;
   description: string;
   sourceMessageIds?: readonly string[];
 }>;
 
-const isRecord = (value: unknown): value is UnknownRecord =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
+export type ParseGeminiAnalysisOptions = Readonly<{
+  allowedSourceMessageIds?: readonly string[];
+}>;
 
 const createEmptyFollowUpRecommendation = (): FollowUpRecommendation => ({
   confidence: 'low',
   reason: '',
-  shouldFollowUp: false,
+  shouldFollowUp: null,
 });
 
 const isAllowedStringValue = <AllowedValue extends string>(
@@ -76,6 +77,47 @@ const normalizeStringArray = (value: unknown, maxLength: number): readonly strin
   }
 
   return value.map((item) => safeText(item, maxLength)).filter((item) => item.length > 0);
+};
+
+const normalizeSourceMessageId = (value: unknown): string => {
+  const sourceMessageId = safeText(value, sourceMessageIdMaximumLength);
+
+  return sourceMessageIdPattern.test(sourceMessageId) ? sourceMessageId : '';
+};
+
+const buildAllowedSourceMessageIdSet = (
+  allowedSourceMessageIds: readonly string[] | undefined
+): ReadonlySet<string> | undefined =>
+  allowedSourceMessageIds
+    ? new Set(
+        allowedSourceMessageIds
+          .map(normalizeSourceMessageId)
+          .filter((sourceMessageId) => sourceMessageId.length > 0)
+      )
+    : undefined;
+
+const normalizeSourceMessageIds = (
+  value: unknown,
+  allowedSourceMessageIds: readonly string[] | undefined
+): readonly string[] => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  const allowedSourceMessageIdSet = buildAllowedSourceMessageIdSet(allowedSourceMessageIds);
+
+  return [
+    ...new Set(
+      value
+        .map(normalizeSourceMessageId)
+        .filter((sourceMessageId) => sourceMessageId.length > 0)
+        .filter(
+          (sourceMessageId) =>
+            allowedSourceMessageIdSet === undefined ||
+            allowedSourceMessageIdSet.has(sourceMessageId)
+        )
+    ),
+  ];
 };
 
 const normalizeNullableText = (value: unknown, maxLength: number): string | null => {
@@ -119,11 +161,13 @@ const hasUnsafeSocialToneAnalysis = (socialTone: SocialToneAnalysis): boolean =>
     ...socialTone.cautions,
   ].some(hasUnsafeSocialToneText);
 
-const normalizeDescribedItemBase = (value: UnknownRecord): NormalizedDescribedItemBase | null => {
-  const sourceMessageIds = readStringArrayField(
-    value,
-    'sourceMessageIds',
-    sourceMessageIdMaximumLength
+const normalizeDescribedItemBase = (
+  value: UnknownRecord,
+  options: ParseGeminiAnalysisOptions
+): NormalizedDescribedItemBase | null => {
+  const sourceMessageIds = normalizeSourceMessageIds(
+    readAnalysisField(value, 'sourceMessageIds'),
+    options.allowedSourceMessageIds
   );
   const description = safeText(value.description, analysisTextMaximumLength);
 
@@ -138,12 +182,15 @@ const normalizeDescribedItemBase = (value: UnknownRecord): NormalizedDescribedIt
   };
 };
 
-const normalizeExplicitActionItem = (value: unknown): ExplicitActionItem | null => {
+const normalizeExplicitActionItem = (
+  value: unknown,
+  options: ParseGeminiAnalysisOptions
+): ExplicitActionItem | null => {
   if (!isRecord(value)) {
     return null;
   }
 
-  const baseItem = normalizeDescribedItemBase(value);
+  const baseItem = normalizeDescribedItemBase(value, options);
 
   if (baseItem === null) {
     return null;
@@ -158,33 +205,10 @@ const normalizeExplicitActionItem = (value: unknown): ExplicitActionItem | null 
   };
 };
 
-const normalizeThingToConsider = (value: unknown): ThingToConsider | null =>
-  isRecord(value) ? normalizeDescribedItemBase(value) : null;
-
-const normalizeSuggestedCalendarEvent = (value: unknown): SuggestedCalendarEvent | undefined => {
-  if (!isRecord(value)) {
-    return undefined;
-  }
-
-  const description = safeText(value.description, analysisTextMaximumLength);
-  const endDateTimeIso = readSafeTextField(value, 'endDateTimeIso');
-  const location = safeText(value.location, analysisTextMaximumLength);
-  const startDateTimeIso = readSafeTextField(value, 'startDateTimeIso');
-  const title = safeText(value.title, analysisTextMaximumLength);
-
-  if (title.length === 0) {
-    return undefined;
-  }
-
-  return {
-    confidence: normalizeConfidence(value.confidence),
-    title,
-    ...(description.length > 0 ? { description } : {}),
-    ...(endDateTimeIso.length > 0 ? { endDateTimeIso } : {}),
-    ...(location.length > 0 ? { location } : {}),
-    ...(startDateTimeIso.length > 0 ? { startDateTimeIso } : {}),
-  };
-};
+const normalizeThingToConsider = (
+  value: unknown,
+  options: ParseGeminiAnalysisOptions
+): ThingToConsider | null => (isRecord(value) ? normalizeDescribedItemBase(value, options) : null);
 
 const normalizeSuggestedLabel = (value: unknown): SuggestedLabel | undefined => {
   if (!isRecord(value)) {
@@ -210,11 +234,13 @@ const normalizeFollowUpRecommendation = (value: unknown): FollowUpRecommendation
   }
 
   const followUpDateIso = readSafeTextField(value, 'followUpDateIso');
+  const shouldFollowUpValue = readAnalysisField(value, 'shouldFollowUp');
 
   return {
     confidence: normalizeConfidence(value.confidence),
     reason: safeText(value.reason, analysisTextMaximumLength),
-    shouldFollowUp: readAnalysisField(value, 'shouldFollowUp') === true,
+    shouldFollowUp:
+      shouldFollowUpValue === true ? true : shouldFollowUpValue === false ? false : null,
     ...(followUpDateIso.length > 0 ? { followUpDateIso } : {}),
   };
 };
@@ -260,20 +286,20 @@ const normalizeObjectArray = <NormalizedItem>(
   });
 };
 
-const normalizeEmailAnalysis = (value: unknown): EmailAnalysis => {
+const normalizeEmailAnalysis = (
+  value: unknown,
+  options: ParseGeminiAnalysisOptions
+): EmailAnalysis => {
   if (!isRecord(value)) {
     return createParseFailureEmailAnalysis('AI response was not a JSON object.');
   }
 
-  const suggestedCalendarEvent = normalizeSuggestedCalendarEvent(
-    readAnalysisField(value, 'suggestedCalendarEvent')
-  );
   const suggestedLabel = normalizeSuggestedLabel(readAnalysisField(value, 'suggestedLabel'));
 
   return {
     explicitActionItems: normalizeObjectArray(
       readAnalysisField(value, 'explicitActionItems'),
-      normalizeExplicitActionItem
+      (item) => normalizeExplicitActionItem(item, options)
     ),
     followUpRecommendation: normalizeFollowUpRecommendation(
       readAnalysisField(value, 'followUpRecommendation')
@@ -289,11 +315,9 @@ const normalizeEmailAnalysis = (value: unknown): EmailAnalysis => {
     ),
     socialTone: normalizeSocialToneAnalysis(readAnalysisField(value, 'socialTone')),
     summary: safeText(value.summary, analysisTextMaximumLength),
-    thingsToConsider: normalizeObjectArray(
-      readAnalysisField(value, 'thingsToConsider'),
-      normalizeThingToConsider
+    thingsToConsider: normalizeObjectArray(readAnalysisField(value, 'thingsToConsider'), (item) =>
+      normalizeThingToConsider(item, options)
     ),
-    ...(suggestedCalendarEvent ? { suggestedCalendarEvent } : {}),
     ...(suggestedLabel ? { suggestedLabel } : {}),
   };
 };
@@ -350,7 +374,7 @@ export const createParseFailureEmailAnalysis = (reason: string): EmailAnalysis =
     followUpRecommendation: {
       confidence: 'low',
       reason: failureReason,
-      shouldFollowUp: false,
+      shouldFollowUp: null,
     },
     risksAndAmbiguities: [failureReason],
     summary: parseFailureSummary,
@@ -364,11 +388,14 @@ export const stripMarkdownCodeFences = (raw: string): string => {
   return fencedJsonMatch?.[1]?.trim() ?? trimmedRaw;
 };
 
-export const parseGeminiAnalysis = (raw: string): EmailAnalysis => {
+export const parseGeminiAnalysis = (
+  raw: string,
+  options: ParseGeminiAnalysisOptions = {}
+): EmailAnalysis => {
   try {
     const parsedValue = JSON.parse(stripMarkdownCodeFences(raw)) as unknown;
 
-    return normalizeEmailAnalysis(parsedValue);
+    return normalizeEmailAnalysis(parsedValue, options);
   } catch (_error: unknown) {
     return createParseFailureEmailAnalysis('AI response was not valid JSON.');
   }

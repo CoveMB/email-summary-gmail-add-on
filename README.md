@@ -31,9 +31,7 @@ pnpm install
 ## Development Commands
 
 ```sh
-pnpm run format
-pnpm run format:check
-pnpm run lint
+pnpm run format:fix
 pnpm run lint:fix
 pnpm run test
 pnpm run build
