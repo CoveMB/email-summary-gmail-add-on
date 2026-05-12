@@ -55,6 +55,9 @@ The result card should include:
 - Suggested label
 - Follow-up recommendation
 - Risks / ambiguities
+- Communication cues
+- Source messages
+- Review notes when parser gaps or safe normalizations exist
 
 Real write actions should be limited in the MVP.
 
@@ -501,13 +504,15 @@ Result card section order:
 
 1. Summary
 2. Explicit action items
-3. Suggested reply points
-4. Follow-up
-5. Risks / ambiguities
-6. Things to consider / think about
+3. Follow-up
+4. Risks / ambiguities
+5. Things to consider / think about
+6. Suggested reply points
 7. Suggested label when available
-8. Social tone
-9. Privacy footer
+8. Communication cues
+9. Source messages
+10. Review notes when parser gaps or safe normalizations exist
+11. Privacy footer
 
 Use concise text. Gmail cards can become visually crowded quickly.
 

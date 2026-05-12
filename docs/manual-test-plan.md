@@ -37,13 +37,13 @@
 6. Open the EmailSummary add-on.
 7. Click `Summarize thread`.
 8. Confirm the card displays `Mock thread summary`.
-9. Confirm the card uses separate readable sections for `Summary`, `Explicit action items`, `Suggested reply points`, `Follow-up`, `Risks / ambiguities`, `Things to consider / think about`, `Suggested label` when available, and `Social tone`.
+9. Confirm the card uses separate readable sections for `Summary`, `Explicit action items`, `Follow-up`, `Risks / ambiguities`, `Things to consider / think about`, `Suggested reply points`, `Suggested label` when available, `Communication cues`, and `Source messages`.
 10. Confirm confidence labels are visible wherever the mock analysis provides confidence.
 11. Confirm evidence lines are visible for action items or things to consider when source message IDs are available.
-12. Confirm `Social tone` uses cautious labels such as `Possible signal`, `May indicate`, `Confidence`, and `Caution`.
-13. Confirm `Social tone` does not diagnose the sender, claim a known psychological state, or use clinical labels.
+12. Confirm `Communication cues` uses cautious labels such as `Communication cue`, `May indicate`, `Confidence`, and `Caution`.
+13. Confirm `Communication cues` does not diagnose the sender, claim a known psychological state, or use clinical labels.
 14. Click `Refresh summary` and confirm the card refreshes without changing OAuth scope behavior.
-15. Confirm the `Create draft reply` button appears only on the summary result card.
+15. Confirm the `Create draft reply` button appears only on result cards with suggested reply points.
 16. Click `Create draft reply`.
 17. Confirm Gmail opens a reply draft for manual review.
 18. Confirm the draft body is deterministic and based on suggested reply points when available.

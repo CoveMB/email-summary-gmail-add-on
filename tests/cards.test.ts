@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { CleanThreadText, EmailAnalysis } from '../src/types/types';
 import type { CardModel } from './helpers/card-service-test-helpers';
 import {
+  readButtons,
   readCardText,
   readRequiredButton,
   readVisibleSectionHeaders,
@@ -20,6 +21,20 @@ type CardsModule = typeof import('../src/domain/Cards');
 const buildCleanThreadText = (wasTruncated: boolean): CleanThreadText => ({
   includedMessageCount: 2,
   originalMessageCount: 3,
+  sourceMessages: [
+    {
+      dateIso: '2026-05-11T14:00:00.000Z',
+      from: 'sender@example.com',
+      isOpenedMessage: true,
+      sourceMessageId: 'message-1',
+    },
+    {
+      dateIso: '2026-05-10T13:00:00.000Z',
+      from: 'recipient@example.com',
+      isOpenedMessage: false,
+      sourceMessageId: 'message-2',
+    },
+  ],
   text: 'clean thread text',
   wasTruncated,
 });
@@ -124,12 +139,13 @@ describe('buildThreadAnalysisDisplayCard', () => {
     expect(readVisibleSectionHeaders(card)).toEqual([
       'Summary',
       'Explicit action items',
-      'Suggested reply points',
       'Follow-up',
       'Risks / ambiguities',
       'Things to consider / think about',
+      'Suggested reply points',
       'Suggested label',
-      'Social tone',
+      'Communication cues',
+      'Source messages',
       'Truncation notice',
     ]);
     expect(cardText).toContain('Recipient should review &lt;agreement&gt;.');
@@ -138,6 +154,9 @@ describe('buildThreadAnalysisDisplayCard', () => {
     expect(cardText).toContain('<b>Confidence:</b> High');
     expect(cardText).toContain('<b>Due:</b> May 12, 2026');
     expect(cardText).toContain('<b>Evidence:</b> Message 1');
+    expect(cardText).toContain(
+      '<b>Message 1:</b> sender@example.com - May 11, 2026, 2:00 PM UTC - opened email'
+    );
     expect(cardText).toContain('<b>Recommendation:</b> Yes');
     expect(cardText).toContain('<b>Follow-up date:</b> May 13, 2026');
     expect(cardText).toContain('<b>Caution:</b>');
@@ -168,6 +187,35 @@ describe('buildThreadAnalysisDisplayCard', () => {
     expect(readVisibleSectionHeaders(card)).not.toContain('Suggested label');
     expect(cardText).toContain('<b>Recommendation:</b> No recommendation returned');
     expect(cardText).not.toContain('<b>Recommended:</b> No');
+  });
+
+  it('renders parser review notes and hides draft creation when no reply points exist', async () => {
+    const { buildThreadAnalysisDisplayCard } = await importCards(mockGeminiModeProperties);
+    const { suggestedLabel: _suggestedLabel, ...baseAnalysisWithoutLabel } = buildEmailAnalysis();
+    const analysis: EmailAnalysis = {
+      ...baseAnalysisWithoutLabel,
+      explicitActionItems: [],
+      parseMetadata: {
+        missingFields: ['explicit_action_items', 'suggested_reply_points'],
+        warnings: [
+          'AI response did not include the explicit action items field.',
+          'AI response did not include the suggested reply points field.',
+        ],
+      },
+      suggestedReplyPoints: [],
+    };
+    const card = buildThreadAnalysisDisplayCard(
+      analysis,
+      buildCleanThreadText(false)
+    ) as unknown as CardModel;
+    const cardText = readCardText(card);
+    const buttonTexts = readButtons(card).map((button) => button.text);
+
+    expect(readVisibleSectionHeaders(card)).toContain('Review notes');
+    expect(cardText).toContain('AI response did not include explicit action items.');
+    expect(cardText).toContain('- AI response did not include the suggested reply points field.');
+    expect(buttonTexts).not.toContain('Create draft reply');
+    expect(buttonTexts).toContain('Refresh summary');
   });
 });
 

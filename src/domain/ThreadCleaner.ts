@@ -2,6 +2,7 @@ import { CONFIG } from '../config/Config';
 import type {
   CleanThreadText,
   CleanThreadTextOptions,
+  CleanThreadSourceMessage,
   ThreadData,
   ThreadMessage,
 } from '../types/types';
@@ -15,6 +16,7 @@ import {
   trimOuterBlankLines,
   trimTrailingLineWhitespace,
 } from '../utils/TextUtils';
+import { buildSourceMessageId } from './SourceMessageIds';
 
 const originalMessageDivider = '-----Original Message-----';
 const truncationNotice = '\n\n[Thread text truncated]';
@@ -106,9 +108,6 @@ const getRecentMessagesWithOpenedMessage = (
   return chronologicalMessages.filter((message) => selectedMessageIds.has(message.id));
 };
 
-const buildSourceMessageId = (messageIndex: number): string =>
-  `message-${String(messageIndex + 1)}`;
-
 const formatOpenedMessageMarker = (message: ThreadMessage, openedMessageId: string): string[] =>
   message.id === openedMessageId ? ['Message focus: opened email'] : [];
 
@@ -127,6 +126,17 @@ const formatCleanMessage = (
     '',
     cleanEmailBody(message.plainBody),
   ].join('\n');
+
+const buildCleanThreadSourceMessage = (
+  openedMessageId: string,
+  message: ThreadMessage,
+  messageIndex: number
+): CleanThreadSourceMessage => ({
+  dateIso: message.dateIso,
+  from: message.from,
+  isOpenedMessage: message.id === openedMessageId,
+  sourceMessageId: buildSourceMessageId(messageIndex),
+});
 
 const truncateToMaximumCharacterCount = (
   text: string,
@@ -188,6 +198,9 @@ export const buildCleanThreadText = (
   return {
     includedMessageCount: includedMessages.length,
     originalMessageCount: threadData.messages.length,
+    sourceMessages: includedMessages.map((message, messageIndex) =>
+      buildCleanThreadSourceMessage(threadData.openedMessageId, message, messageIndex)
+    ),
     text: truncatedThreadText.text,
     wasTruncated: truncatedThreadText.wasTruncated,
   };

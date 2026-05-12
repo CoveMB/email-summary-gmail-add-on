@@ -24,6 +24,13 @@ export type ThreadMessage = Readonly<{
   to: string;
 }>;
 
+export type CleanThreadSourceMessage = Readonly<{
+  dateIso: string;
+  from: string;
+  isOpenedMessage: boolean;
+  sourceMessageId: string;
+}>;
+
 export type ThreadData = Readonly<{
   latestBodyPreview: string;
   latestDateIso: string;
@@ -38,6 +45,7 @@ export type ThreadData = Readonly<{
 export type CleanThreadText = Readonly<{
   includedMessageCount: number;
   originalMessageCount: number;
+  sourceMessages?: readonly CleanThreadSourceMessage[];
   text: string;
   wasTruncated: boolean;
 }>;
@@ -95,6 +103,11 @@ export type SocialToneAnalysis = Readonly<{
   cautions: readonly string[];
 }>;
 
+export type EmailAnalysisParseMetadata = Readonly<{
+  missingFields: readonly string[];
+  warnings: readonly string[];
+}>;
+
 export type EmailAnalysis = Readonly<{
   summary: string;
   explicitActionItems: readonly ExplicitActionItem[];
@@ -105,6 +118,8 @@ export type EmailAnalysis = Readonly<{
   socialTone: SocialToneAnalysis;
   risksAndAmbiguities: readonly string[];
   overallConfidence: Confidence;
+  parseMetadata?: EmailAnalysisParseMetadata;
+  schemaVersion?: string;
 }>;
 
 export type ThreadSummaryErrorKind =

@@ -13,16 +13,22 @@ import {
   type UrgencyOrPressure,
 } from '../types/types';
 import { isRecord, type UnknownRecord } from '../utils/TypeGuards';
-import { readAnalysisField, type AnalysisFieldName } from './AnalysisSchema';
+import { isSupportedIsoDate } from '../utils/DateUtils';
+import {
+  analysisFieldNames,
+  currentAnalysisSchemaVersion,
+  requiredAnalysisFieldNames,
+  readAnalysisField,
+  type AnalysisFieldName,
+} from './AnalysisSchema';
 import { createDefaultSocialToneAnalysis, defaultSocialToneSummary } from './SocialToneDefaults';
+import { normalizeSourceMessageId } from './SourceMessageIds';
 
 export const parseFailureSummary = 'Analysis could not be parsed.';
 const parseFailureFallbackReason = 'Parser returned fallback analysis.';
 const safeReasonMaximumLength = 500;
 const analysisTextMaximumLength = 1000;
 const labelNameMaximumLength = 80;
-const sourceMessageIdMaximumLength = 200;
-const sourceMessageIdPattern = /^message-[1-9]\d*$/;
 const unsafeSocialToneTerms = [
   'anxious',
   'manipulative',
@@ -38,6 +44,35 @@ type NormalizedDescribedItemBase = Readonly<{
   confidence: Confidence;
   description: string;
   sourceMessageIds?: readonly string[];
+}>;
+
+type NormalizedValue<NormalizedValueType> = Readonly<{
+  value: NormalizedValueType;
+  warnings: readonly string[];
+}>;
+
+type NormalizedNullableValue<NormalizedValueType> = Readonly<{
+  value: NormalizedValueType | null;
+  warnings: readonly string[];
+}>;
+
+type NormalizedOptionalDate = Readonly<{
+  isoDate?: string;
+  warnings: readonly string[];
+}>;
+
+type SanitizedSocialToneText = Readonly<{
+  text: string;
+  wasSanitized: boolean;
+}>;
+
+type NormalizedAnalysisParts = Readonly<{
+  explicitActionItems: NormalizedValue<readonly ExplicitActionItem[]>;
+  followUpRecommendation: NormalizedValue<FollowUpRecommendation>;
+  missingFields: readonly string[];
+  socialTone: NormalizedValue<SocialToneAnalysis>;
+  thingsToConsider: NormalizedValue<readonly ThingToConsider[]>;
+  warnings: readonly string[];
 }>;
 
 export type ParseGeminiAnalysisOptions = Readonly<{
@@ -79,12 +114,6 @@ const normalizeStringArray = (value: unknown, maxLength: number): readonly strin
   return value.map((item) => safeText(item, maxLength)).filter((item) => item.length > 0);
 };
 
-const normalizeSourceMessageId = (value: unknown): string => {
-  const sourceMessageId = safeText(value, sourceMessageIdMaximumLength);
-
-  return sourceMessageIdPattern.test(sourceMessageId) ? sourceMessageId : '';
-};
-
 const buildAllowedSourceMessageIdSet = (
   allowedSourceMessageIds: readonly string[] | undefined
 ): ReadonlySet<string> | undefined =>
@@ -120,6 +149,21 @@ const normalizeSourceMessageIds = (
   ];
 };
 
+const normalizeOptionalIsoDate = (
+  value: unknown,
+  invalidDateWarning: string
+): NormalizedOptionalDate => {
+  const isoDate = safeText(value, analysisTextMaximumLength);
+
+  if (isoDate.length === 0) {
+    return { warnings: [] };
+  }
+
+  return isSupportedIsoDate(isoDate)
+    ? { isoDate, warnings: [] }
+    : { warnings: [invalidDateWarning] };
+};
+
 const normalizeNullableText = (value: unknown, maxLength: number): string | null => {
   const text = safeText(value, maxLength);
 
@@ -150,16 +194,24 @@ const hasUnsafeSocialToneText = (text: string): boolean => {
   return unsafeSocialToneTerms.some((unsafeTerm) => normalizedText.includes(unsafeTerm));
 };
 
-const hasUnsafeSocialToneAnalysis = (socialTone: SocialToneAnalysis): boolean =>
-  [
-    socialTone.summary,
-    socialTone.possibleSenderState ?? '',
-    socialTone.relationalStance ?? '',
-    socialTone.evidence,
-    ...socialTone.apparentTone,
-    ...socialTone.socialSignals,
-    ...socialTone.cautions,
-  ].some(hasUnsafeSocialToneText);
+const sanitizeSocialToneText = (text: string): SanitizedSocialToneText =>
+  hasUnsafeSocialToneText(text) ? { text: '', wasSanitized: true } : { text, wasSanitized: false };
+
+const sanitizeNullableSocialToneText = (text: string | null): SanitizedSocialToneText =>
+  text === null ? { text: '', wasSanitized: false } : sanitizeSocialToneText(text);
+
+const sanitizeSocialToneTextArray = (
+  values: readonly string[]
+): Readonly<{ values: readonly string[]; wasSanitized: boolean }> => {
+  const sanitizedValues = values.map(sanitizeSocialToneText);
+
+  return {
+    values: sanitizedValues
+      .map((sanitizedValue) => sanitizedValue.text)
+      .filter((sanitizedText) => sanitizedText.length > 0),
+    wasSanitized: sanitizedValues.some((sanitizedValue) => sanitizedValue.wasSanitized),
+  };
+};
 
 const normalizeDescribedItemBase = (
   value: UnknownRecord,
@@ -185,30 +237,39 @@ const normalizeDescribedItemBase = (
 const normalizeExplicitActionItem = (
   value: unknown,
   options: ParseGeminiAnalysisOptions
-): ExplicitActionItem | null => {
+): NormalizedNullableValue<ExplicitActionItem> => {
   if (!isRecord(value)) {
-    return null;
+    return { value: null, warnings: [] };
   }
 
   const baseItem = normalizeDescribedItemBase(value, options);
 
   if (baseItem === null) {
-    return null;
+    return { value: null, warnings: [] };
   }
 
-  const dueDateIso = readSafeTextField(value, 'dueDateIso');
+  const dueDate = normalizeOptionalIsoDate(
+    readAnalysisField(value, 'dueDateIso'),
+    'AI response included an invalid due date, so the date was hidden.'
+  );
 
   return {
-    ...baseItem,
-    owner: normalizeActionOwner(value.owner),
-    ...(dueDateIso.length > 0 ? { dueDateIso } : {}),
+    value: {
+      ...baseItem,
+      owner: normalizeActionOwner(value.owner),
+      ...(dueDate.isoDate ? { dueDateIso: dueDate.isoDate } : {}),
+    },
+    warnings: dueDate.warnings,
   };
 };
 
 const normalizeThingToConsider = (
   value: unknown,
   options: ParseGeminiAnalysisOptions
-): ThingToConsider | null => (isRecord(value) ? normalizeDescribedItemBase(value, options) : null);
+): NormalizedNullableValue<ThingToConsider> => ({
+  value: isRecord(value) ? normalizeDescribedItemBase(value, options) : null,
+  warnings: [],
+});
 
 const normalizeSuggestedLabel = (value: unknown): SuggestedLabel | undefined => {
   if (!isRecord(value)) {
@@ -228,62 +289,190 @@ const normalizeSuggestedLabel = (value: unknown): SuggestedLabel | undefined => 
   };
 };
 
-const normalizeFollowUpRecommendation = (value: unknown): FollowUpRecommendation => {
+const normalizeFollowUpRecommendation = (
+  value: unknown
+): NormalizedValue<FollowUpRecommendation> => {
   if (!isRecord(value)) {
-    return createEmptyFollowUpRecommendation();
+    return {
+      value: createEmptyFollowUpRecommendation(),
+      warnings: [],
+    };
   }
 
-  const followUpDateIso = readSafeTextField(value, 'followUpDateIso');
+  const followUpDate = normalizeOptionalIsoDate(
+    readAnalysisField(value, 'followUpDateIso'),
+    'AI response included an invalid follow-up date, so the date was hidden.'
+  );
   const shouldFollowUpValue = readAnalysisField(value, 'shouldFollowUp');
 
   return {
-    confidence: normalizeConfidence(value.confidence),
-    reason: safeText(value.reason, analysisTextMaximumLength),
-    shouldFollowUp:
-      shouldFollowUpValue === true ? true : shouldFollowUpValue === false ? false : null,
-    ...(followUpDateIso.length > 0 ? { followUpDateIso } : {}),
+    value: {
+      confidence: normalizeConfidence(value.confidence),
+      reason: safeText(value.reason, analysisTextMaximumLength),
+      shouldFollowUp:
+        shouldFollowUpValue === true ? true : shouldFollowUpValue === false ? false : null,
+      ...(followUpDate.isoDate ? { followUpDateIso: followUpDate.isoDate } : {}),
+    },
+    warnings: followUpDate.warnings,
   };
 };
 
-const normalizeSocialToneAnalysis = (value: unknown): SocialToneAnalysis => {
+const normalizeSocialToneAnalysis = (value: unknown): NormalizedValue<SocialToneAnalysis> => {
   if (!isRecord(value)) {
-    return createDefaultSocialToneAnalysis();
+    return {
+      value: createDefaultSocialToneAnalysis(),
+      warnings: [],
+    };
   }
 
-  const summary = readSafeTextField(value, 'socialToneSummary');
+  const summary = sanitizeSocialToneText(readSafeTextField(value, 'socialToneSummary'));
+  const apparentTone = sanitizeSocialToneTextArray(
+    readStringArrayField(value, 'socialToneApparentTone')
+  );
+  const cautions = sanitizeSocialToneTextArray(readStringArrayField(value, 'socialToneCautions'));
+  const evidence = sanitizeSocialToneText(readSafeTextField(value, 'socialToneEvidence'));
+  const possibleSenderState = sanitizeNullableSocialToneText(
+    readNullableTextField(value, 'socialTonePossibleSenderState')
+  );
+  const relationalStance = sanitizeNullableSocialToneText(
+    readNullableTextField(value, 'socialToneRelationalStance')
+  );
+  const socialSignals = sanitizeSocialToneTextArray(
+    readStringArrayField(value, 'socialToneSocialSignals')
+  );
+  const socialToneWasSanitized = [
+    summary.wasSanitized,
+    apparentTone.wasSanitized,
+    cautions.wasSanitized,
+    evidence.wasSanitized,
+    possibleSenderState.wasSanitized,
+    relationalStance.wasSanitized,
+    socialSignals.wasSanitized,
+  ].some(Boolean);
 
-  const normalizedSocialTone: SocialToneAnalysis = {
-    apparentTone: readStringArrayField(value, 'socialToneApparentTone'),
-    cautions: readStringArrayField(value, 'socialToneCautions'),
-    confidence: normalizeConfidence(value.confidence),
-    evidence: readSafeTextField(value, 'socialToneEvidence'),
-    possibleSenderState: readNullableTextField(value, 'socialTonePossibleSenderState'),
-    relationalStance: readNullableTextField(value, 'socialToneRelationalStance'),
-    socialSignals: readStringArrayField(value, 'socialToneSocialSignals'),
-    summary: summary || defaultSocialToneSummary,
-    urgencyOrPressure: normalizeUrgencyOrPressure(
-      readAnalysisField(value, 'socialToneUrgencyOrPressure')
-    ),
+  return {
+    value: {
+      apparentTone: apparentTone.values,
+      cautions: cautions.values,
+      confidence: normalizeConfidence(value.confidence),
+      evidence: evidence.text,
+      possibleSenderState: possibleSenderState.text.length > 0 ? possibleSenderState.text : null,
+      relationalStance: relationalStance.text.length > 0 ? relationalStance.text : null,
+      socialSignals: socialSignals.values,
+      summary: summary.text || defaultSocialToneSummary,
+      urgencyOrPressure: normalizeUrgencyOrPressure(
+        readAnalysisField(value, 'socialToneUrgencyOrPressure')
+      ),
+    },
+    warnings: socialToneWasSanitized
+      ? ['Some communication-cue wording was hidden because it overclaimed sender state.']
+      : [],
   };
-
-  return hasUnsafeSocialToneAnalysis(normalizedSocialTone)
-    ? createDefaultSocialToneAnalysis()
-    : normalizedSocialTone;
 };
 
 const normalizeObjectArray = <NormalizedItem>(
   value: unknown,
-  normalizeItem: (value: unknown) => NormalizedItem | null
-): readonly NormalizedItem[] => {
+  normalizeItem: (value: unknown) => NormalizedNullableValue<NormalizedItem>
+): NormalizedValue<readonly NormalizedItem[]> => {
   if (!Array.isArray(value)) {
-    return [];
+    return {
+      value: [],
+      warnings: [],
+    };
   }
 
-  return value.flatMap((item) => {
-    const normalizedItem = normalizeItem(item);
+  const normalizedItems = value
+    .map(normalizeItem)
+    .filter(
+      (normalizedItem): normalizedItem is NormalizedValue<NormalizedItem> =>
+        normalizedItem.value !== null
+    );
 
-    return normalizedItem === null ? [] : [normalizedItem];
-  });
+  return {
+    value: normalizedItems.map((normalizedItem) => normalizedItem.value),
+    warnings: normalizedItems.flatMap((normalizedItem) => normalizedItem.warnings),
+  };
+};
+
+const hasAnalysisField = (record: UnknownRecord, fieldName: AnalysisFieldName): boolean => {
+  const fieldNames = analysisFieldNames[fieldName];
+
+  return fieldNames.internal in record || fieldNames.external in record;
+};
+
+const buildMissingAnalysisFields = (record: UnknownRecord): readonly string[] =>
+  requiredAnalysisFieldNames
+    .filter((fieldName) => !hasAnalysisField(record, fieldName))
+    .map((fieldName) => analysisFieldNames[fieldName].external);
+
+const formatAnalysisFieldForWarning = (fieldName: string): string => fieldName.replace(/_/g, ' ');
+
+const buildMissingFieldWarnings = (missingFields: readonly string[]): readonly string[] =>
+  missingFields
+    .filter((missingField) => missingField !== analysisFieldNames.schemaVersion.external)
+    .map(
+      (missingField) =>
+        `AI response did not include the ${formatAnalysisFieldForWarning(missingField)} field.`
+    );
+
+const dedupeWarnings = (warnings: readonly string[]): readonly string[] => [...new Set(warnings)];
+
+const collectNormalizedAnalysisWarnings = (
+  normalizedAnalysisParts: Pick<
+    NormalizedAnalysisParts,
+    | 'explicitActionItems'
+    | 'followUpRecommendation'
+    | 'missingFields'
+    | 'socialTone'
+    | 'thingsToConsider'
+  >
+): readonly string[] =>
+  dedupeWarnings([
+    ...buildMissingFieldWarnings(normalizedAnalysisParts.missingFields),
+    ...normalizedAnalysisParts.explicitActionItems.warnings,
+    ...normalizedAnalysisParts.followUpRecommendation.warnings,
+    ...normalizedAnalysisParts.socialTone.warnings,
+    ...normalizedAnalysisParts.thingsToConsider.warnings,
+  ]);
+
+const normalizeAnalysisParts = (
+  value: UnknownRecord,
+  options: ParseGeminiAnalysisOptions
+): NormalizedAnalysisParts => {
+  const explicitActionItems = normalizeObjectArray(
+    readAnalysisField(value, 'explicitActionItems'),
+    (item) => normalizeExplicitActionItem(item, options)
+  );
+  const followUpRecommendation = normalizeFollowUpRecommendation(
+    readAnalysisField(value, 'followUpRecommendation')
+  );
+  const missingFields = buildMissingAnalysisFields(value);
+  const socialTone = normalizeSocialToneAnalysis(readAnalysisField(value, 'socialTone'));
+  const thingsToConsider = normalizeObjectArray(
+    readAnalysisField(value, 'thingsToConsider'),
+    (item) => normalizeThingToConsider(item, options)
+  );
+
+  return {
+    explicitActionItems,
+    followUpRecommendation,
+    missingFields,
+    socialTone,
+    thingsToConsider,
+    warnings: collectNormalizedAnalysisWarnings({
+      explicitActionItems,
+      followUpRecommendation,
+      missingFields,
+      socialTone,
+      thingsToConsider,
+    }),
+  };
+};
+
+const normalizeSchemaVersion = (value: unknown): string => {
+  const schemaVersion = safeText(value, analysisTextMaximumLength);
+
+  return schemaVersion.length > 0 ? schemaVersion : currentAnalysisSchemaVersion;
 };
 
 const normalizeEmailAnalysis = (
@@ -294,30 +483,29 @@ const normalizeEmailAnalysis = (
     return createParseFailureEmailAnalysis('AI response was not a JSON object.');
   }
 
+  const normalizedAnalysisParts = normalizeAnalysisParts(value, options);
   const suggestedLabel = normalizeSuggestedLabel(readAnalysisField(value, 'suggestedLabel'));
 
   return {
-    explicitActionItems: normalizeObjectArray(
-      readAnalysisField(value, 'explicitActionItems'),
-      (item) => normalizeExplicitActionItem(item, options)
-    ),
-    followUpRecommendation: normalizeFollowUpRecommendation(
-      readAnalysisField(value, 'followUpRecommendation')
-    ),
+    explicitActionItems: normalizedAnalysisParts.explicitActionItems.value,
+    followUpRecommendation: normalizedAnalysisParts.followUpRecommendation.value,
     overallConfidence: normalizeConfidence(readAnalysisField(value, 'overallConfidence')),
+    parseMetadata: {
+      missingFields: normalizedAnalysisParts.missingFields,
+      warnings: normalizedAnalysisParts.warnings,
+    },
     risksAndAmbiguities: normalizeStringArray(
       readAnalysisField(value, 'risksAndAmbiguities'),
       analysisTextMaximumLength
     ),
+    schemaVersion: normalizeSchemaVersion(readAnalysisField(value, 'schemaVersion')),
     suggestedReplyPoints: normalizeStringArray(
       readAnalysisField(value, 'suggestedReplyPoints'),
       analysisTextMaximumLength
     ),
-    socialTone: normalizeSocialToneAnalysis(readAnalysisField(value, 'socialTone')),
-    summary: safeText(value.summary, analysisTextMaximumLength),
-    thingsToConsider: normalizeObjectArray(readAnalysisField(value, 'thingsToConsider'), (item) =>
-      normalizeThingToConsider(item, options)
-    ),
+    socialTone: normalizedAnalysisParts.socialTone.value,
+    summary: readSafeTextField(value, 'summary'),
+    thingsToConsider: normalizedAnalysisParts.thingsToConsider.value,
     ...(suggestedLabel ? { suggestedLabel } : {}),
   };
 };
@@ -376,7 +564,12 @@ export const createParseFailureEmailAnalysis = (reason: string): EmailAnalysis =
       reason: failureReason,
       shouldFollowUp: null,
     },
+    parseMetadata: {
+      missingFields: [],
+      warnings: [failureReason],
+    },
     risksAndAmbiguities: [failureReason],
+    schemaVersion: currentAnalysisSchemaVersion,
     summary: parseFailureSummary,
   };
 };

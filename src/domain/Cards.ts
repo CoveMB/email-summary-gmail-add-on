@@ -1,6 +1,8 @@
 import { CONFIG } from '../config/Config';
 import { getGeminiApiKeyStatus } from '../config/GeminiClient';
+import { analysisFieldNames, cardSectionTitles, type AnalysisFieldName } from './AnalysisSchema';
 import type {
+  CleanThreadSourceMessage,
   CleanThreadText,
   EmailAnalysis,
   ExplicitActionItem,
@@ -28,6 +30,9 @@ import { defaultSocialToneCaution } from './SocialToneDefaults';
 
 const summarizeThreadFunctionName = 'buildThreadSummaryCard';
 const emptySectionText = 'None found.';
+
+type OptionalCardSection = GoogleAppsScript.Card_Service.CardSection | undefined;
+type CardSectionBuilder = () => OptionalCardSection;
 
 const buildHeader = (subtitle: string): GoogleAppsScript.Card_Service.CardHeader =>
   CardService.newCardHeader().setTitle(CONFIG.APP_NAME).setSubtitle(subtitle);
@@ -65,13 +70,12 @@ const buildCreateDraftReplyButtonSet = (
 
 const buildAnalysisSection = (
   title: string,
-  bodyLines: readonly string[]
+  bodyLines: readonly string[],
+  emptyText = emptySectionText
 ): GoogleAppsScript.Card_Service.CardSection =>
   CardService.newCardSection()
     .setHeader(title)
-    .addWidget(
-      buildTextParagraph(bodyLines.length > 0 ? bodyLines.join('<br>') : emptySectionText)
-    );
+    .addWidget(buildTextParagraph(bodyLines.length > 0 ? bodyLines.join('<br>') : emptyText));
 
 const buildPlainTextSection = (bodyText: string): GoogleAppsScript.Card_Service.CardSection =>
   CardService.newCardSection().addWidget(buildTextParagraph(escapeCardText(bodyText)));
@@ -87,18 +91,35 @@ const buildPrivacyFooterSection = (): GoogleAppsScript.Card_Service.CardSection 
 
 const buildListSection = (
   title: string,
-  items: readonly string[]
+  items: readonly string[],
+  emptyText = emptySectionText
 ): GoogleAppsScript.Card_Service.CardSection =>
   buildAnalysisSection(
     title,
-    items.length > 0 ? items.map((item) => `- ${escapeCardText(item)}`) : [emptySectionText]
+    items.map((item) => `- ${escapeCardText(item)}`),
+    emptyText
   );
 
 const buildFormattedListSection = (
   title: string,
-  items: readonly string[]
-): GoogleAppsScript.Card_Service.CardSection =>
-  buildAnalysisSection(title, items.length > 0 ? items : [emptySectionText]);
+  items: readonly string[],
+  emptyText = emptySectionText
+): GoogleAppsScript.Card_Service.CardSection => buildAnalysisSection(title, items, emptyText);
+
+const isAnalysisFieldMissing = (analysis: EmailAnalysis, fieldName: AnalysisFieldName): boolean =>
+  analysis.parseMetadata?.missingFields.includes(analysisFieldNames[fieldName].external) ?? false;
+
+const buildMissingFieldEmptyText = (fieldDisplayName: string): string =>
+  `AI response did not include ${fieldDisplayName}.`;
+
+const buildMissingFieldAwareEmptyText = (
+  analysis: EmailAnalysis,
+  fieldName: AnalysisFieldName,
+  fieldDisplayName: string
+): string =>
+  isAnalysisFieldMissing(analysis, fieldName)
+    ? buildMissingFieldEmptyText(fieldDisplayName)
+    : emptySectionText;
 
 const formatDescribedAnalysisItem = (
   description: string,
@@ -136,7 +157,8 @@ const formatFollowUpRecommendationValue = (
   shouldFollowUp ? 'Yes' : shouldFollowUp === false ? 'No' : 'No recommendation returned';
 
 const formatFollowUpRecommendation = (
-  followUpRecommendation: FollowUpRecommendation
+  followUpRecommendation: FollowUpRecommendation,
+  missingFollowUpRecommendation: boolean
 ): readonly string[] =>
   buildOptionalMetadataLines([
     {
@@ -145,7 +167,9 @@ const formatFollowUpRecommendation = (
     },
     { label: 'Confidence', value: formatConfidenceForDisplay(followUpRecommendation.confidence) },
     {
-      fallbackValue: '(no reason provided)',
+      fallbackValue: missingFollowUpRecommendation
+        ? buildMissingFieldEmptyText('follow-up recommendation')
+        : '(no reason provided)',
       label: 'Reason',
       value: followUpRecommendation.reason,
     },
@@ -174,8 +198,8 @@ const buildLabeledMetadataLists = (
 
 const formatSocialToneAnalysis = (socialTone: SocialToneAnalysis): readonly string[] => [
   ...buildOptionalMetadataLines([
-    { label: 'Summary', value: socialTone.summary },
-    { fallbackValue: 'Unclear', label: 'Apparent tone', value: socialTone.apparentTone },
+    { label: 'Cue summary', value: socialTone.summary },
+    { fallbackValue: 'Unclear', label: 'Observed tone', value: socialTone.apparentTone },
   ]),
   ...buildOptionalMetadataLines([
     {
@@ -198,7 +222,7 @@ const formatSocialToneAnalysis = (socialTone: SocialToneAnalysis): readonly stri
   ...buildLabeledMetadataLists([
     {
       fallbackValue: 'Not enough evidence to identify a reliable signal.',
-      label: 'Possible signal',
+      label: 'Communication cue',
       values: socialTone.socialSignals,
     },
     {
@@ -213,7 +237,7 @@ const buildTruncationSection = (
   cleanThread: CleanThreadText
 ): GoogleAppsScript.Card_Service.CardSection | undefined =>
   cleanThread.wasTruncated
-    ? buildAnalysisSection('Truncation notice', [
+    ? buildAnalysisSection(cardSectionTitles.truncationNotice, [
         'Cleaned thread text was truncated before AI analysis. Review output with this limitation in mind.',
       ])
     : undefined;
@@ -243,7 +267,7 @@ const buildHomeConfigurationSection = (): GoogleAppsScript.Card_Service.CardSect
   ]);
 
 const buildSummarySection = (analysis: EmailAnalysis): GoogleAppsScript.Card_Service.CardSection =>
-  buildAnalysisSection('Summary', [
+  buildAnalysisSection(cardSectionTitles.summary, [
     escapeCardText(analysis.summary || '(No summary returned.)'),
     buildMetadataLine('Confidence', formatConfidenceForDisplay(analysis.overallConfidence)),
   ]);
@@ -251,42 +275,102 @@ const buildSummarySection = (analysis: EmailAnalysis): GoogleAppsScript.Card_Ser
 const buildSocialToneSection = (
   socialTone: SocialToneAnalysis
 ): GoogleAppsScript.Card_Service.CardSection =>
-  buildAnalysisSection('Social tone', formatSocialToneAnalysis(socialTone));
+  buildAnalysisSection(cardSectionTitles.communicationCues, formatSocialToneAnalysis(socialTone));
 
 const buildExplicitActionItemsSection = (
-  explicitActionItems: readonly ExplicitActionItem[]
-): GoogleAppsScript.Card_Service.CardSection =>
-  buildFormattedListSection('Explicit action items', explicitActionItems.map(formatActionItem));
-
-const buildThingsToConsiderSection = (
-  thingsToConsider: readonly ThingToConsider[]
+  analysis: EmailAnalysis
 ): GoogleAppsScript.Card_Service.CardSection =>
   buildFormattedListSection(
-    'Things to consider / think about',
-    thingsToConsider.map(formatThingToConsider)
+    cardSectionTitles.explicitActionItems,
+    analysis.explicitActionItems.map(formatActionItem),
+    buildMissingFieldAwareEmptyText(analysis, 'explicitActionItems', 'explicit action items')
+  );
+
+const buildThingsToConsiderSection = (
+  analysis: EmailAnalysis
+): GoogleAppsScript.Card_Service.CardSection =>
+  buildFormattedListSection(
+    cardSectionTitles.thingsToConsider,
+    analysis.thingsToConsider.map(formatThingToConsider),
+    buildMissingFieldAwareEmptyText(analysis, 'thingsToConsider', 'things to consider')
   );
 
 const buildSuggestedReplyPointsSection = (
-  suggestedReplyPoints: readonly string[]
+  analysis: EmailAnalysis
 ): GoogleAppsScript.Card_Service.CardSection =>
-  buildListSection('Suggested reply points', suggestedReplyPoints);
+  buildListSection(
+    cardSectionTitles.suggestedReplyPoints,
+    analysis.suggestedReplyPoints,
+    buildMissingFieldAwareEmptyText(analysis, 'suggestedReplyPoints', 'suggested reply points')
+  );
 
 const buildSuggestedLabelSection = (
   suggestedLabel: SuggestedLabel | undefined
 ): GoogleAppsScript.Card_Service.CardSection | undefined =>
   suggestedLabel
-    ? buildAnalysisSection('Suggested label', formatLabelSuggestion(suggestedLabel))
+    ? buildAnalysisSection(cardSectionTitles.suggestedLabel, formatLabelSuggestion(suggestedLabel))
     : undefined;
 
-const buildFollowUpSection = (
-  followUpRecommendation: FollowUpRecommendation
-): GoogleAppsScript.Card_Service.CardSection =>
-  buildAnalysisSection('Follow-up', formatFollowUpRecommendation(followUpRecommendation));
+const buildFollowUpSection = (analysis: EmailAnalysis): GoogleAppsScript.Card_Service.CardSection =>
+  buildAnalysisSection(
+    cardSectionTitles.followUp,
+    formatFollowUpRecommendation(
+      analysis.followUpRecommendation,
+      isAnalysisFieldMissing(analysis, 'followUpRecommendation')
+    )
+  );
 
 const buildRisksAndAmbiguitiesSection = (
-  risksAndAmbiguities: readonly string[]
+  analysis: EmailAnalysis
 ): GoogleAppsScript.Card_Service.CardSection =>
-  buildListSection('Risks / ambiguities', risksAndAmbiguities);
+  buildListSection(
+    cardSectionTitles.risksAndAmbiguities,
+    analysis.risksAndAmbiguities,
+    buildMissingFieldAwareEmptyText(analysis, 'risksAndAmbiguities', 'risks and ambiguities')
+  );
+
+const formatSourceMessage = (sourceMessage: CleanThreadSourceMessage): string => {
+  const messageLabel =
+    formatSourceMessageIdsForDisplay([sourceMessage.sourceMessageId]) ??
+    sourceMessage.sourceMessageId;
+  const sourceMessageDetails = [
+    sourceMessage.from || 'Unknown sender',
+    formatIsoDateForDisplay(sourceMessage.dateIso) ?? 'Unknown date',
+    ...(sourceMessage.isOpenedMessage ? ['opened email'] : []),
+  ];
+
+  return buildMetadataLine(messageLabel, sourceMessageDetails.join(' - '));
+};
+
+const buildSourceMessagesSection = (
+  sourceMessages: readonly CleanThreadSourceMessage[] | undefined
+): GoogleAppsScript.Card_Service.CardSection | undefined =>
+  sourceMessages && sourceMessages.length > 0
+    ? buildAnalysisSection(
+        cardSectionTitles.sourceMessages,
+        sourceMessages.map(formatSourceMessage)
+      )
+    : undefined;
+
+const buildReviewNotesSection = (
+  analysis: EmailAnalysis
+): GoogleAppsScript.Card_Service.CardSection | undefined => {
+  const warnings = analysis.parseMetadata?.warnings ?? [];
+
+  return warnings.length > 0
+    ? buildFormattedListSection(
+        cardSectionTitles.reviewNotes,
+        warnings.map((warning) => `- ${escapeCardText(warning)}`)
+      )
+    : undefined;
+};
+
+const buildCreateDraftReplySection = (
+  suggestedReplyPoints: readonly string[]
+): GoogleAppsScript.Card_Service.CardSection | undefined =>
+  suggestedReplyPoints.length > 0
+    ? buildButtonSection(buildCreateDraftReplyButtonSet(suggestedReplyPoints))
+    : undefined;
 
 export const buildHomeCard = (): GoogleAppsScript.Card_Service.Card =>
   buildCard('Personal Gmail thread brief assistant', [
@@ -312,26 +396,35 @@ const buildGmailSummaryEntrySection = (): GoogleAppsScript.Card_Service.CardSect
 export const buildGmailSummaryEntryCard = (): GoogleAppsScript.Card_Service.Card =>
   buildCard('Gmail thread context', [buildGmailSummaryEntrySection(), buildPrivacyFooterSection()]);
 
+const buildDefinedSections = (
+  sectionBuilders: readonly CardSectionBuilder[]
+): readonly GoogleAppsScript.Card_Service.CardSection[] =>
+  sectionBuilders.flatMap((buildSection) => {
+    const section = buildSection();
+
+    return section ? [section] : [];
+  });
+
 const buildThreadAnalysisSections = (
   analysis: EmailAnalysis,
   cleanThread: CleanThreadText
 ): readonly GoogleAppsScript.Card_Service.CardSection[] =>
-  [
-    buildSummarySection(analysis),
-    buildExplicitActionItemsSection(analysis.explicitActionItems),
-    buildSuggestedReplyPointsSection(analysis.suggestedReplyPoints),
-    buildFollowUpSection(analysis.followUpRecommendation),
-    buildRisksAndAmbiguitiesSection(analysis.risksAndAmbiguities),
-    buildThingsToConsiderSection(analysis.thingsToConsider),
-    buildSuggestedLabelSection(analysis.suggestedLabel),
-    buildSocialToneSection(analysis.socialTone),
-    buildTruncationSection(cleanThread),
-    buildButtonSection(buildCreateDraftReplyButtonSet(analysis.suggestedReplyPoints)),
-    buildButtonSection(buildRefreshSummaryButtonSet()),
-    buildPrivacyFooterSection(),
-  ].filter(
-    (section): section is GoogleAppsScript.Card_Service.CardSection => section !== undefined
-  );
+  buildDefinedSections([
+    () => buildSummarySection(analysis),
+    () => buildExplicitActionItemsSection(analysis),
+    () => buildFollowUpSection(analysis),
+    () => buildRisksAndAmbiguitiesSection(analysis),
+    () => buildThingsToConsiderSection(analysis),
+    () => buildSuggestedReplyPointsSection(analysis),
+    () => buildSuggestedLabelSection(analysis.suggestedLabel),
+    () => buildSocialToneSection(analysis.socialTone),
+    () => buildSourceMessagesSection(cleanThread.sourceMessages),
+    () => buildTruncationSection(cleanThread),
+    () => buildReviewNotesSection(analysis),
+    () => buildCreateDraftReplySection(analysis.suggestedReplyPoints),
+    () => buildButtonSection(buildRefreshSummaryButtonSet()),
+    () => buildPrivacyFooterSection(),
+  ]);
 
 export const buildThreadAnalysisDisplayCard = (
   analysis: EmailAnalysis,

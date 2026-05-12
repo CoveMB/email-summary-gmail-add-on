@@ -272,6 +272,20 @@ describe('parseGeminiAnalysis', () => {
     });
     expect(analysis.socialTone).toEqual(expectedDefaultSocialToneAnalysis);
     expect(analysis.overallConfidence).toBe('low');
+    expect(analysis.schemaVersion).toBe('email-summary-analysis-v1');
+    expect(analysis.parseMetadata?.missingFields).toEqual([
+      'schema_version',
+      'explicit_action_items',
+      'follow_up_recommendation',
+      'overall_confidence',
+      'risks_and_ambiguities',
+      'suggested_reply_points',
+      'social_tone',
+      'things_to_consider',
+    ]);
+    expect(analysis.parseMetadata?.warnings).toContain(
+      'AI response did not include the explicit action items field.'
+    );
   });
 
   it('keeps explicit negative follow-up distinct from missing follow-up data', () => {
@@ -356,7 +370,7 @@ describe('parseGeminiAnalysis', () => {
     expect(analysis.socialTone.confidence).toBe('low');
   });
 
-  it('falls back when social tone uses diagnostic or overclaiming labels', () => {
+  it('hides unsafe social tone fields without dropping safe tone details', () => {
     const analysis = parseGeminiAnalysis(
       JSON.stringify({
         social_tone: {
@@ -370,7 +384,50 @@ describe('parseGeminiAnalysis', () => {
       })
     );
 
-    expect(analysis.socialTone).toEqual(expectedDefaultSocialToneAnalysis);
+    expect(analysis.socialTone).toEqual({
+      apparentTone: ['polite'],
+      cautions: [],
+      confidence: 'high',
+      evidence: 'The sender asks for a quick reply.',
+      possibleSenderState: null,
+      relationalStance: null,
+      socialSignals: [],
+      summary: defaultSocialToneSummary,
+      urgencyOrPressure: 'medium',
+    });
+    expect(analysis.parseMetadata?.warnings).toContain(
+      'Some communication-cue wording was hidden because it overclaimed sender state.'
+    );
+  });
+
+  it('hides invalid ISO dates and reports date normalization warnings', () => {
+    const analysis = parseGeminiAnalysis(
+      JSON.stringify({
+        explicit_action_items: [
+          {
+            confidence: 'high',
+            description: 'Send the agreement.',
+            due_date_iso: 'next Friday',
+            owner: 'recipient',
+          },
+        ],
+        follow_up_recommendation: {
+          confidence: 'medium',
+          follow_up_date_iso: '2026-02-30',
+          reason: 'Follow up if no reply arrives.',
+          should_follow_up: true,
+        },
+      })
+    );
+
+    expect(analysis.explicitActionItems[0]?.dueDateIso).toBeUndefined();
+    expect(analysis.followUpRecommendation.followUpDateIso).toBeUndefined();
+    expect(analysis.parseMetadata?.warnings).toEqual(
+      expect.arrayContaining([
+        'AI response included an invalid due date, so the date was hidden.',
+        'AI response included an invalid follow-up date, so the date was hidden.',
+      ])
+    );
   });
 
   it('drops parsed objects that lack required display text', () => {

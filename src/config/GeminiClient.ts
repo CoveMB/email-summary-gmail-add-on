@@ -1,4 +1,4 @@
-import { analysisFieldNames } from '../domain/AnalysisSchema';
+import { analysisFieldNames, currentAnalysisSchemaVersion } from '../domain/AnalysisSchema';
 import { getEnvironmentVariableCastedOr } from '../utils/Env';
 import { isRecord, type UnknownRecord } from '../utils/TypeGuards';
 import {
@@ -22,6 +22,7 @@ export class GeminiClientError extends Error {
 }
 
 const mockGeminiAnalysisResponse = {
+  [analysisFieldNames.schemaVersion.external]: currentAnalysisSchemaVersion,
   [analysisFieldNames.explicitActionItems.external]: [
     {
       confidence: 'high',
@@ -60,7 +61,7 @@ const mockGeminiAnalysisResponse = {
       'The message may come across as a routine setup reminder, but this is mock data.',
     [analysisFieldNames.socialToneRelationalStance.external]: 'neutral and task-oriented',
     [analysisFieldNames.socialToneSocialSignals.external]: [
-      'Possible signal: the wording is direct but not demanding.',
+      'Communication cue: the wording is direct but not demanding.',
     ],
     summary: 'The mock message may come across as neutral, practical, and low-pressure.',
     [analysisFieldNames.socialToneUrgencyOrPressure.external]: 'low',

@@ -63,4 +63,8 @@ describe('display formatters', () => {
       'Message 1, Message 2'
     );
   });
+
+  it('hides invalid date strings', () => {
+    expect(formatIsoDateForDisplay('not a date')).toBeUndefined();
+  });
 });
